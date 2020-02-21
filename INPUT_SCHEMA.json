@@ -1,0 +1,172 @@
+{
+    "title": "Booking Crawler input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "search": {
+            "title": "Booking search query",
+            "type": "string",
+            "description": "Query string to be searched on Booking.com",
+            "prefill": "Paris",
+            "editor": "textfield"
+        },
+        "destType": {
+            "title": "Destination type",
+            "type": "string",
+            "description": "Type of the destination",
+            "default": "city",
+            "enum": [
+                "city",
+                "region"
+            ],
+            "enumTitles": [
+                "City",
+                "Region"
+            ]
+        },
+        "startUrls": {
+            "title": "Start URLs",
+            "type": "array",
+            "description": "URLs to start with instead of search query",
+            "editor": "requestListSources"
+        },
+        "sortBy": {
+            "title": "Order results by",
+            "type": "string",
+            "description": "Hotel attribute by which the results will be ordered",
+            "default": "bayesian_review_score",
+            "enum": [
+                "upsort_bh",
+                "price",
+                "closest_ski_lift_distance",                
+                "class",
+                "class_asc",
+                "class_and_price",
+                "distance_from_search",
+                "bayesian_review_score"
+            ],
+            "enumTitles": [
+                "Show homes first",
+                "Price (lowest first)",
+                "Distance to nearest ski lift",
+                "Stars [5->1]",
+                "Stars [1->5]",
+                "Star rating and price",
+                "Distance from city centre",
+                "Top reviewed"
+            ]
+        },
+        "minScore": {
+            "title": "Minimum rating",
+            "type": "string",
+            "description": "Minimum rating of a hotel",
+            "editor": "textfield"
+        },
+        "maxPages": {
+            "title": "Maximum pagination pages",
+            "type": "integer",
+            "description": "Number of pagination pages to be crawled",
+            "maximum": 1000000
+        },
+        "checkIn": {
+            "title": "Check-in date (yyyy-mm-dd)",
+            "type": "string",
+            "description": "Check-in date",
+            "default": "",
+            "editor": "textfield"
+        },
+        "checkOut": {
+            "title": "Check-out date (yyyy-mm-dd)",
+            "type": "string",
+            "description": "Check-out date",
+            "default": "",
+            "editor": "textfield"
+        },
+        "rooms": {
+            "title": "Number of rooms",
+            "type": "integer",
+            "description": "Number of rooms for the search",
+            "default": 1,
+            "maximum": 50
+        },
+        "adults": {
+            "title": "Number of adults",
+            "type": "integer",
+            "description": "Number of adults for the search",
+            "default": 2,
+            "maximum": 50
+        },
+        "children": {
+            "title": "Number of children",
+            "type": "integer",
+            "description": "Number of children for the search",
+            "default": 0,
+            "maximum": 50
+        },
+        "currency": {
+            "title": "Preferred currency",
+            "type": "string",
+            "description": "Currency code to be set on the site",
+            "default": "EUR",
+            "enum": ["ARS","AUD","AZN","BHD","BRL","BGN","CAD","XOF","CLP","CNY","COP","CZK","DKK","EGP","EUR","FJD","GEL","HKD","HUF","INR","IDR","ILS","JPY","JOD","KZT","KRW","KWD","MYR","MXN","MDL","NAD","TWD","NZD","NOK","OMR","PLN","GBP","QAR","RON","RUB","SAR","SGD","ZAR","SEK","CHF","THB","TRY","AED","USD","UAH"],
+            "enumTitles": ["AR$ - Argentine peso", "AUD - Australian dollar", "AZN - Azerbaijan, New Manats", "BHD - Bahrain dinar", "R$ - Brazilian real", "BGN - Bulgarian lev", "CAD - Canadian dollar", "XOF - CFA Franc BCEAO", "CL$ - Chilean peso", "CNY - Chinese yuan", "COP - Colombian peso", "Kč - Czech koruna", "DKK - Danish krone", "EGP - Egyptian pound", "€ - Euro", "FJD - Fijian dollar", "GEL - Georgian lari", "HK$ - Hong Kong Dollar", "HUF - Hungarian forint", "Rs. - Indian rupee", "Rp - Indonesian rupiah", "₪ - Israeli new sheqel", "¥ - Japanese yen", "JOD - Jordanian dinar", "KZT - Kazakhstani tenge", "KRW - Korean won", "KWD - Kuwaiti dinar", "MYR - Malaysian ringgit", "MXN - Mexican peso", "MDL - Moldovan leu", "NAD - Namibian Dollar", "TWD - New Taiwan Dollar", "NZD - New Zealand dollar", "NOK - Norwegian krone", "OMR - Omani rial", "zł - Polish zloty", "£ - Pound sterling", "QAR - Qatar riyal", "lei - Romanian new leu", "RUB - Russian Ruble", "SAR - Saudi Arabian riyal", "S$ - Singapore dollar", "ZAR - South African rand", "SEK - Swedish krona", "CHF - Swiss franc", "THB - Thai baht", "TL - Turkish lira", "AED - U.A.E. dirham", "US$ - U.S. dollar", "UAH - Ukraine Hryvnia"]
+        },
+        "language": {
+            "title": "Language",
+            "type": "string",
+            "description": "Language code to be set on the site",
+            "default": "en-gb",
+            "enum": ["en-gb","en-us","de","nl","fr","es","es-ar","ca","it","pt-pt","pt-br","no","fi","sv","da","cs","hu","ro","ja","zh-cn","zh-tw","pl","el","ru","tr","bg","ar","ko","he","lv","uk","id","ms","th","et","hr","lt","sk","sr","sl","vi","tl","is"],
+            "enumTitles": ["English (UK)","English (US)","Deutsch","Nederlands","Français","Español","Español (AR)","Català","Italiano","Português (PT)","Português (BR)","Norsk","Suomi","Svenska","Dansk","Čeština","Magyar","Română","日本語","简体中文","繁體中文","Polski","Ελληνικά","Русский","Türkçe","Български","العربية","한국어","עברית","Latviski","Українська","Bahasa Indonesia","Bahasa Malaysia","ภาษาไทย","Eesti","Hrvatski","Lietuvių","Slovenčina","Srpski","Slovenščina","Tiếng Việt","Filipino","Íslenska"]
+        },
+        "minMaxPrice": {
+            "title": "Price range",
+            "type": "string",
+            "description": "Minimum-maximum price range",
+            "default": "none",
+            "enum": ["none", "0-50", "50-100", "100-150", "150-200", "200+"],
+            "enumTitles": ["none", "0 - € 50", "€ 50 - € 100", "€ 100 - € 150", "€ 150 - € 200", "€ 200 +"] 
+        },
+        "propertyType": {
+            "title": "Property type",
+            "type": "string",
+            "description": "Property type filter",
+            "default": "none",
+            "enum": ["none", "Hotels", "Apartments", "Hostels", "Guest houses", "Homestays", "Bed and breakfasts", "Holiday homes", "Boats", "Villas", "Motels", "Holiday parks", "Campsites", "Luxury tents"]
+        },
+        "proxyConfig": {
+            "title": "Proxy configuration",
+            "type": "object",
+            "description": "Optionally use Apify Proxy",
+            "prefill": { "useApifyProxy": true, "apifyProxyGroups": ["SHADER"] },
+            "editor": "proxy"
+        },
+        "simple": {
+            "title": "Extract hotel list pages only (no detail)",
+            "type": "boolean",
+            "description": "The crawler will get only the data available on the list page and not go to the hotel detail page.",
+            "default": true
+        },
+        "useFilters": {
+            "title": "Circumvent 1000 results limitation (uses criteria filters, slower)",
+            "type": "boolean",
+            "description": "The crawler will enqueue all the different criteria filtered pages, this will overcome the 1000 results limit, but the scrape will take significantly longer.",
+            "default": false
+        },
+        "testProxy": {
+            "title": "Test proxies (useful for proxy groups with many blocked IPs, experimental)",
+            "type": "boolean",
+            "description": "Before starting crawling, the crawler will try to find a proxy that's not blocked by Booking.",
+            "default": false
+        },
+        "extendOutputFunction": {
+            "title": "Extend output function",
+            "type": "string",
+            "nullable": true,
+            "description": "Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output",
+            "prefill": "($) => { return {} }",
+            "editor": "javascript"
+        }
+    },
+    "required": []
+}
