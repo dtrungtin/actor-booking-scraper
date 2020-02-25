@@ -213,6 +213,11 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
 }
 ```
 
+### Compute units consumption
+Keep in mind that it is much more efficient to run one longer scrape (at least one minute) than more shorter ones because of the startup time.
+
+The average consumption is **1 Compute unit for 200 actor pages** scraped
+
 ## Notes
 
 * The actor will not work without proxy, i.e. if you try running it without setting a proxy, it will
