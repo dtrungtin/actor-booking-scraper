@@ -1,6 +1,8 @@
 const Apify = require('apify');
 const _ = require('underscore');
 
+const { downloadListOfUrls } = Apify.utils;
+
 const { extractDetail, listPageFunction } = require('./extraction.js');
 const { checkDate, retireBrowser, isObject } = require('./util.js');
 const {
@@ -69,19 +71,58 @@ Apify.main(async () => {
             throw new Error('INPUT.startUrls must an array!');
         }
 
-        // convert any inconsistencies to correct format
+        let bookingUrlCount = 0;
+        let otherUrlCount = 0;
         for (let i = 0; i < input.startUrls.length; i++) {
             let request = input.startUrls[i];
             if (typeof request === 'string') { request = { url: request }; }
-            if ((!request.userData || !request.userData.label !== 'detail') && request.url.indexOf('/hotel/') > -1) {
-                request.userData = { label: 'detail' };
+            if (request.url.includes('www.booking.com')) {
+                bookingUrlCount++;
+            } else {
+                otherUrlCount++;
             }
-            request.url = addUrlParameters(request.url, input);
-            input.startUrls[i] = request;
         }
 
-        // create RequestList and reference startUrl
-        requestList = new Apify.RequestList({ sources: input.startUrls });
+        if (bookingUrlCount > 0 && otherUrlCount > 0) {
+            throw new Error('INPUT.startUrls must be all www.booking.com urls or an exteral sources url!');
+        }
+
+        if (bookingUrlCount > 0) {
+            // convert any inconsistencies to correct format
+            for (let i = 0; i < input.startUrls.length; i++) {
+                let request = input.startUrls[i];
+                if (typeof request === 'string') { request = { url: request }; }
+
+                if ((!request.userData || !request.userData.label !== 'detail') && request.url.indexOf('/hotel/') > -1) {
+                    request.userData = { label: 'detail' };
+                }
+
+                request.url = addUrlParameters(request.url, input);
+                input.startUrls[i] = request;
+            }
+
+            requestList = new Apify.RequestList({ sources: input.startUrls });
+        } else {
+            let request = input.startUrls[0];
+            if (typeof request === 'string') { request = { url: request }; }
+
+            const sourceUrlList = await downloadListOfUrls({ url: request.url });
+            const urlList = [];
+            for (const url of sourceUrlList) {
+                if (url.includes('www.booking.com')) {
+                    const obj = { url };
+                    if (obj.url.indexOf('/hotel/') > -1) {
+                        obj.userData = { label: 'detail' };
+                    }
+
+                    obj.url = addUrlParameters(obj.url, input);
+                    urlList.push(obj);
+                }
+            }
+
+            requestList = new Apify.RequestList({ sources: urlList });
+        }
+
         startUrl = addUrlParameters('https://www.booking.com/searchresults.html?dest_type=city&ss=paris&order=bayesian_review_score', input);
         await requestList.initialize();
     } else {
