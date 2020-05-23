@@ -164,7 +164,7 @@
             "type": "string",
             "nullable": true,
             "description": "Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output",
-            "prefill": "($) => { return {} }",
+            "prefill": "() => { return {} }",
             "editor": "javascript"
         }
     },
