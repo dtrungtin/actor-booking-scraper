@@ -216,7 +216,7 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
 ## Compute units consumption
 Keep in mind that it is much more efficient to run one longer scrape (at least one minute) than more shorter ones because of the startup time.
 
-The average consumption is **1 Compute unit for 200 actor pages** scraped
+The average consumption is **1 Compute unit for 100 actor pages** scraped
 
 ## Notes
 
