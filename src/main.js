@@ -1,5 +1,6 @@
 const Apify = require('apify');
 const _ = require('underscore');
+const { USER_AGENT } = require('./consts');
 
 const { downloadListOfUrls } = Apify.utils;
 
@@ -11,13 +12,6 @@ const {
 } = require('./util.js');
 
 const { log } = Apify.utils;
-
-const puppeteerOptions = {
-    headless: true,
-    ignoreHTTPSErrors: true,
-    useChrome: true,
-    stealth: true,
-};
 
 /** Main function */
 Apify.main(async () => {
@@ -124,20 +118,44 @@ Apify.main(async () => {
         }
     }
 
+    const proxyConfiguration = await Apify.createProxyConfiguration({
+        ...input.proxyConfig,
+    });
+
     const crawler = new Apify.PuppeteerCrawler({
         requestList,
         requestQueue,
         handlePageTimeoutSecs: 120,
-
-        launchPuppeteerFunction: () => {
+        proxyConfiguration,
+        launchPuppeteerOptions: {
+            ignoreHTTPSErrors: true,
+            useChrome: Apify.isAtHome(),
+            args: [
+                '--ignore-certificate-errors',
+            ],
+            stealth: true,
+            stealthOptions: {
+                addPlugins: false,
+                emulateWindowFrame: false,
+                emulateWebGL: false,
+                emulateConsoleDebug: false,
+                addLanguage: false,
+                hideWebDriver: true,
+                hackPermissions: false,
+                mockChrome: false,
+                mockChromeInIframe: false,
+                mockDeviceMemory: false,
+            },
+            userAgent: USER_AGENT,
+        },
+        launchPuppeteerFunction: async (options) => {
             if (!input.testProxy) {
                 return Apify.launchPuppeteer({
-                    ...puppeteerOptions,
-                    ...input.proxyConfig,
+                    ...options,
                 });
             }
 
-            return getWorkingBrowser(startUrl, input, puppeteerOptions);
+            return getWorkingBrowser(startUrl, input, options);
         },
 
         handlePageFunction: async ({ page, request, puppeteerPool }) => {
@@ -185,23 +203,22 @@ Apify.main(async () => {
                 log.info('extracting detail...');
                 const detail = await extractDetail(page, ld, input, request.userData);
                 log.info('detail extracted');
+                let userResult = {};
 
                 if (extendOutputFunction) {
-                    const userResult = await page.evaluate((functionStr) => {
+                    userResult = await page.evaluate(async (functionStr) => {
                         // eslint-disable-next-line no-eval
                         const f = eval(functionStr);
-                        return f();
+                        return f(window.jQuery);
                     }, input.extendOutputFunction);
 
                     if (!isObject(userResult)) {
                         log.info('extendOutputFunction has to return an object!!!');
                         process.exit(1);
                     }
-
-                    _.extend(detail, userResult);
                 }
 
-                await Apify.pushData(detail);
+                await Apify.pushData({ ...detail, ...userResult });
             } else {
                 // Handle hotel list page.
                 const filtered = await isFiltered(page);
@@ -271,10 +288,10 @@ Apify.main(async () => {
                 } else if (enqueuingReady) { // If not, enqueue the detail pages to be extracted.
                     log.info('enqueuing detail pages...');
                     const urlMod = fixUrl('&', input);
-                    const keyMod = async link => (await getAttribute(link, 'textContent')).trim().replace(/\n/g, '');
+                    const keyMod = async (link) => (await getAttribute(link, 'textContent')).trim().replace(/\n/g, '');
                     const prItem = await page.$('.bui-pagination__info');
                     const pageRange = (await getAttribute(prItem, 'textContent')).match(/\d+/g);
-                    const firstItem = parseInt(pageRange[0], 10);
+                    const firstItem = parseInt(pageRange && pageRange[0] ? pageRange[0] : '1', 10);
                     const links = await page.$$('.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link');
 
                     for (let iLink = 0; iLink < links.length; iLink++) {
@@ -309,11 +326,9 @@ Apify.main(async () => {
         gotoFunction: async ({ page, request }) => {
             await Apify.utils.puppeteer.blockRequests(page);
 
-            const userAgent = Apify.utils.getRandomUserAgent();
-            await page.setUserAgent(userAgent);
             const cookies = await page.cookies('https://www.booking.com');
             await page.deleteCookie(...cookies);
-            await page.viewport({
+            await page.setViewport({
                 width: 1024 + Math.floor(Math.random() * 100),
                 height: 768 + Math.floor(Math.random() * 100),
             });

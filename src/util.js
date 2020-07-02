@@ -1,20 +1,29 @@
 const Apify = require('apify');
 const moment = require('moment');
+const Puppeteer = require('puppeteer'); // eslint-disable-line
 
 const { log } = Apify.utils;
 
-const getAttribute = async (element, attr) => {
+/**
+ * @param {Puppeteer.ElementHandle} element
+ * @param {string} attr
+ * @param {any} [fallback]
+ * @returns {Promise<string>}
+ */
+const getAttribute = async (element, attr, fallback = '') => {
     try {
         const prop = await element.getProperty(attr);
         return (await prop.jsonValue()).trim();
-    } catch (e) { return null; }
+    } catch (e) {
+        return fallback;
+    }
 };
 module.exports.getAttribute = getAttribute;
 
 /**
  * Adds links from a page to the RequestQueue.
- * @param {Page} page - Puppeteer Page object containing the link elements.
- * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
+ * @param {Puppeteer.Page} page - Puppeteer Page object containing the link elements.
+ * @param {Apify.RequestQueue} requestQueue - RequestQueue to add the requests to.
  * @param {string} selector - A selector representing the links.
  * @param {Function} condition - Function to check if the link is to be added.
  * @param {string} label - A label for the added requests.
@@ -88,14 +97,13 @@ module.exports.getWorkingBrowser = async (startUrl, input, puppeteerOptions) => 
     const sortBy = input.sortBy || 'bayesian_review_score';
     for (let i = 0; i < 1000; i++) {
         log.info('testing proxy...');
-        const config = Object.assign({
-            apifyProxySession: `BOOKING_${Math.random()}`,
-        }, input.proxyConfig ? { ...puppeteerOptions, ...input.proxyConfig } : {});
-        const browser = await Apify.launchPuppeteer(config);
+
+        const browser = await Apify.launchPuppeteer({
+            ...puppeteerOptions,
+        });
         const page = await browser.newPage();
 
         try {
-            await Apify.utils.puppeteer.hideWebDriver(page);
             await page.goto(startUrl, { timeout: 60000 });
             // await page.waitForNavigation({ timeout: 60000 });
         } catch (e) {

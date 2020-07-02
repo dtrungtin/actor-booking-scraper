@@ -3,5 +3,7 @@
 	"template": "puppeteer_crawler",
 	"version": "0.1",
 	"buildTag": "latest",
-	"env": null
+	"env": {
+        "APIFY_LOG_LEVEL": "DEBUG"
+    }
 }
