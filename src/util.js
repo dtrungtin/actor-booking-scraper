@@ -225,13 +225,46 @@ module.exports.setMinMaxPrice = async (page, input, requestQueue) => {
 };
 
 const DATE_FORMAT = 'YYYY-MM-DD';
+
+/**
+ * @param {string} date
+ */
 module.exports.checkDate = (date) => {
     if (date) {
-        const match = moment(date, DATE_FORMAT).format(DATE_FORMAT) === date;
-        if (!match) {
+        const dateMatch = moment(date, DATE_FORMAT);
+
+        if (dateMatch.format(DATE_FORMAT) !== date) {
             throw new Error(`Date should be in format ${DATE_FORMAT}`);
         }
+
+        if (dateMatch.isBefore(moment())) {
+            throw new Error(`You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`);
+        }
+
+        return dateMatch;
     }
+
+    return null;
+};
+
+/**
+ * Returns true if the gap between two dates is considered ok
+ * for using as checkIn / checkOut dates. For larger gaps Booking
+ * won't return any room results
+ *
+ * @param {null | moment.Moment} checkIn
+ * @param {null | moment.Moment} checkOut
+ */
+exports.checkDateGap = (checkIn, checkOut) => {
+    if (checkIn && checkOut) {
+        if (!checkOut.isSameOrAfter(checkIn)) {
+            throw new Error(`checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`);
+        }
+
+        return checkOut.diff(checkIn, 'days', true);
+    }
+
+    return -1;
 };
 
 /**

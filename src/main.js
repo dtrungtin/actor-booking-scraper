@@ -1,11 +1,10 @@
 const Apify = require('apify');
-const _ = require('underscore');
 const { USER_AGENT } = require('./consts');
 
 const { downloadListOfUrls } = Apify.utils;
 
 const { extractDetail, listPageFunction } = require('./extraction.js');
-const { checkDate, retireBrowser, isObject } = require('./util.js');
+const { checkDate, checkDateGap, retireBrowser, isObject } = require('./util.js');
 const {
     getAttribute, enqueueLinks, addUrlParameters, getWorkingBrowser, fixUrl,
     isFiltered, isMinMaxPriceSet, setMinMaxPrice, isPropertyTypeSet, setPropertyType, enqueueAllPages,
@@ -37,8 +36,18 @@ Apify.main(async () => {
         throw new Error('Property type and filters cannot be used at the same time.');
     }
 
-    checkDate(input.checkIn);
-    checkDate(input.checkOut);
+    const daysInterval = checkDateGap(checkDate(input.checkIn), checkDate(input.checkOut));
+
+    if (daysInterval >= 30) {
+        log.warning(`=============
+        The selected check-in and check-out dates have ${daysInterval} days between them.
+        Some listings won't return available room information!
+
+        Decrease the days interval to fix this
+      =============`);
+    } else if (daysInterval > 0) {
+        log.info(`Using check-in / check-out with an interval of ${daysInterval} days`);
+    }
 
     let extendOutputFunction;
     if (typeof input.extendOutputFunction === 'string' && input.extendOutputFunction.trim() !== '') {
