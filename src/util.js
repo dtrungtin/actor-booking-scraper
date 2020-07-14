@@ -1,20 +1,29 @@
 const Apify = require('apify');
 const moment = require('moment');
+const Puppeteer = require('puppeteer'); // eslint-disable-line
 
 const { log } = Apify.utils;
 
-const getAttribute = async (element, attr) => {
+/**
+ * @param {Puppeteer.ElementHandle} element
+ * @param {string} attr
+ * @param {any} [fallback]
+ * @returns {Promise<string>}
+ */
+const getAttribute = async (element, attr, fallback = '') => {
     try {
         const prop = await element.getProperty(attr);
         return (await prop.jsonValue()).trim();
-    } catch (e) { return null; }
+    } catch (e) {
+        return fallback;
+    }
 };
 module.exports.getAttribute = getAttribute;
 
 /**
  * Adds links from a page to the RequestQueue.
- * @param {Page} page - Puppeteer Page object containing the link elements.
- * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
+ * @param {Puppeteer.Page} page - Puppeteer Page object containing the link elements.
+ * @param {Apify.RequestQueue} requestQueue - RequestQueue to add the requests to.
  * @param {string} selector - A selector representing the links.
  * @param {Function} condition - Function to check if the link is to be added.
  * @param {string} label - A label for the added requests.
@@ -88,14 +97,13 @@ module.exports.getWorkingBrowser = async (startUrl, input, puppeteerOptions) => 
     const sortBy = input.sortBy || 'bayesian_review_score';
     for (let i = 0; i < 1000; i++) {
         log.info('testing proxy...');
-        const config = Object.assign({
-            apifyProxySession: `BOOKING_${Math.random()}`,
-        }, input.proxyConfig ? { ...puppeteerOptions, ...input.proxyConfig } : {});
-        const browser = await Apify.launchPuppeteer(config);
+
+        const browser = await Apify.launchPuppeteer({
+            ...puppeteerOptions,
+        });
         const page = await browser.newPage();
 
         try {
-            await Apify.utils.puppeteer.hideWebDriver(page);
             await page.goto(startUrl, { timeout: 60000 });
             // await page.waitForNavigation({ timeout: 60000 });
         } catch (e) {
@@ -217,13 +225,46 @@ module.exports.setMinMaxPrice = async (page, input, requestQueue) => {
 };
 
 const DATE_FORMAT = 'YYYY-MM-DD';
+
+/**
+ * @param {string} date
+ */
 module.exports.checkDate = (date) => {
     if (date) {
-        const match = moment(date, DATE_FORMAT).format(DATE_FORMAT) === date;
-        if (!match) {
+        const dateMatch = moment(date, DATE_FORMAT);
+
+        if (dateMatch.format(DATE_FORMAT) !== date) {
             throw new Error(`Date should be in format ${DATE_FORMAT}`);
         }
+
+        if (dateMatch.isBefore(moment())) {
+            throw new Error(`You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`);
+        }
+
+        return dateMatch;
     }
+
+    return null;
+};
+
+/**
+ * Returns true if the gap between two dates is considered ok
+ * for using as checkIn / checkOut dates. For larger gaps Booking
+ * won't return any room results
+ *
+ * @param {null | moment.Moment} checkIn
+ * @param {null | moment.Moment} checkOut
+ */
+exports.checkDateGap = (checkIn, checkOut) => {
+    if (checkIn && checkOut) {
+        if (!checkOut.isSameOrAfter(checkIn)) {
+            throw new Error(`checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`);
+        }
+
+        return checkOut.diff(checkIn, 'days', true);
+    }
+
+    return -1;
 };
 
 /**

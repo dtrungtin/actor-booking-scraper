@@ -1,3 +1,4 @@
+const Puppeteer = require('puppeteer'); // eslint-disable-line
 const { getAttribute, addUrlParameters } = require('./util.js');
 
 /**
@@ -8,8 +9,7 @@ const extractRoomsJQuery = () => {
     let bedText;
     let features;
     const rooms = [];
-    // eslint-disable-next-line no-undef
-    const $ = jQuery;
+    const $ = window.jQuery;
 
     // Function for extracting occupancy info.
     const occExtractor = (row) => {
@@ -87,7 +87,7 @@ const extractRoomsJQuery = () => {
 
 /**
  * Extracts information from the detail page.
- * @param {Page} page - The Puppeteer page object.
+ * @param {Puppeteer.Page} page - The Puppeteer page object.
  * @param {Object} ld - JSON-LD Object extracted from the page.
  * @param {Object} input - The Actor input data object.
  */
@@ -144,14 +144,14 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
  * NOTE: This function is to be used in page.evaluate.
  * @param {Object} input - The Actor input data object.
  */
-module.exports.listPageFunction = input => new Promise((resolve) => {
-    // eslint-disable-next-line no-undef
-    const $ = jQuery;
+module.exports.listPageFunction = (input) => new Promise((resolve) => {
+    const $ = window.jQuery;
 
     /**
      * Waits for a condition to be non-false.
      * @param {Function} condition - The condition Function.
      * @param {Function} callback - Callback to be executed when the waiting is done.
+     * @param {number} [i]
      */
     const waitFor = function (condition, callback, i) {
         const val = condition();
