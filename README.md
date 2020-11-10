@@ -110,7 +110,7 @@ Must be one of the following:
     "bayesian_review_score"      // Top reviewed
 ]
 ```
-* `extendOutputFunction` Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output, only when `simple` = false. More information in [Extend output function](#extend-output-function).
+* `extendOutputFunction` Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output, only when `simple` = false.
 
 ## Starting with URLs
 
