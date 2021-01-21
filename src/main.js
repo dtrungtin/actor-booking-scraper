@@ -1,139 +1,43 @@
 const Apify = require('apify');
+
 const { USER_AGENT } = require('./consts');
-
-const { downloadListOfUrls } = Apify.utils;
-
+const { validateInput, cleanInput, evalExtendOutputFn } = require('./input');
 const { extractDetail, listPageFunction } = require('./extraction.js');
-const { checkDate, checkDateGap, retireBrowser, isObject } = require('./util.js');
 const {
     getAttribute, enqueueLinks, addUrlParameters, getWorkingBrowser, fixUrl,
     isFiltered, isMinMaxPriceSet, setMinMaxPrice, isPropertyTypeSet, setPropertyType, enqueueAllPages,
+    retireBrowser, isObject,
 } = require('./util.js');
+const { prepareRequestSources } = require('./start-urls');
 
 const { log } = Apify.utils;
 
-/** Main function */
 Apify.main(async () => {
-    // Actor INPUT variable
     const input = await Apify.getValue('INPUT');
+    validateInput(input);
+    cleanInput(input);
+    const extendOutputFunction = evalExtendOutputFn(input);
 
-    // Actor STATE variable
+    const {
+        startUrls,
+        minScore,
+        sortBy = 'bayesian_review_score',
+        maxPages,
+        proxyConfig,
+    } = input;
+
     const state = await Apify.getValue('STATE') || { crawled: {} };
 
-    // Migrating flag
     let migrating = false;
     Apify.events.on('migrating', () => { migrating = true; });
 
-    if (!input.search && !input.startUrls) {
-        throw new Error('Missing "search" or "startUrls" attribute in INPUT!');
-    } else if (input.search && input.startUrls && input.search.trim().length > 0 && input.startUrls.length > 0) {
-        throw new Error('It is not possible to use both "search" and "startUrls" attributes in INPUT!');
-    }
-    if (!(input.proxyConfig && input.proxyConfig.useApifyProxy)) {
-        throw new Error('This actor cannot be used without Apify proxy.');
-    }
-    if (input.useFilters && input.propertyType !== 'none') {
-        throw new Error('Property type and filters cannot be used at the same time.');
-    }
-
-    const daysInterval = checkDateGap(checkDate(input.checkIn), checkDate(input.checkOut));
-
-    if (daysInterval >= 30) {
-        log.warning(`=============
-        The selected check-in and check-out dates have ${daysInterval} days between them.
-        Some listings won't return available room information!
-
-        Decrease the days interval to fix this
-      =============`);
-    } else if (daysInterval > 0) {
-        log.info(`Using check-in / check-out with an interval of ${daysInterval} days`);
-    } else if (daysInterval === -1 && !input.simple) {
-        log.warning(`=============
-        You aren't providing both check-in and checkout dates, some information will be missing from the output
-      =============`);
-    }
-
-    let extendOutputFunction;
-    if (typeof input.extendOutputFunction === 'string' && input.extendOutputFunction.trim() !== '') {
-        try {
-            // eslint-disable-next-line no-eval
-            extendOutputFunction = eval(input.extendOutputFunction);
-        } catch (e) {
-            throw new Error(`'extendOutputFunction' is not valid Javascript! Error: ${e}`);
-        }
-        if (typeof extendOutputFunction !== 'function') {
-            throw new Error('extendOutputFunction is not a function! Please fix it or use just default ouput!');
-        }
-    }
-
-    if (input.minScore) { input.minScore = parseFloat(input.minScore); }
-    const sortBy = input.sortBy || 'bayesian_review_score';
     const requestQueue = await Apify.openRequestQueue();
 
-    let startUrl;
-    let requestList;
+    const { startUrl, requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
 
-    if (input.startUrls) {
-        if (!Array.isArray(input.startUrls)) {
-            throw new Error('INPUT.startUrls must an array!');
-        }
+    const requestList = await Apify.openRequestList('LIST', requestSources);
 
-        const urlList = [];
-
-        // convert any inconsistencies to correct format
-        for (let i = 0; i < input.startUrls.length; i++) {
-            let request = input.startUrls[i];
-
-            if (request.requestsFromUrl) {
-                const sourceUrlList = await downloadListOfUrls({ url: request.requestsFromUrl });
-                for (const url of sourceUrlList) {
-                    request = { url };
-                    if (request.url.indexOf('/hotel/') > -1) {
-                        request.userData = { label: 'detail' };
-                    }
-
-                    request.url = addUrlParameters(request.url, input);
-                    urlList.push(request);
-                }
-            } else {
-                if (typeof request === 'string') { request = { url: request }; }
-
-                if ((!request.userData || !request.userData.label !== 'detail') && request.url.indexOf('/hotel/') > -1) {
-                    request.userData = { label: 'detail' };
-                }
-
-                request.url = addUrlParameters(request.url, input);
-                urlList.push(request);
-            }
-        }
-
-        requestList = new Apify.RequestList({ sources: urlList });
-        startUrl = addUrlParameters('https://www.booking.com/searchresults.html?dest_type=city&ss=paris&order=bayesian_review_score', input);
-        await requestList.initialize();
-    } else {
-        // Create startURL based on provided INPUT.
-        const dType = input.destType || 'city';
-        const query = encodeURIComponent(input.search);
-        startUrl = `https://www.booking.com/searchresults.html?dest_type=${dType}&ss=${query}&order=${sortBy}`;
-        startUrl = addUrlParameters(startUrl, input);
-
-        // Enqueue all pagination pages.
-        startUrl += '&rows=25';
-        log.info(`startUrl: ${startUrl}`);
-        await requestQueue.addRequest({ url: startUrl, userData: { label: 'start' } });
-        if (!input.useFilters && input.propertyType === 'none' && input.maxPages) {
-            for (let i = 1; i < input.maxPages; i++) {
-                await requestQueue.addRequest({
-                    url: `${startUrl}&offset=${25 * i}`,
-                    userData: { label: 'page' },
-                });
-            }
-        }
-    }
-
-    const proxyConfiguration = await Apify.createProxyConfiguration({
-        ...input.proxyConfig,
-    });
+    const proxyConfiguration = await Apify.createProxyConfiguration(proxyConfig);
 
     const crawler = new Apify.PuppeteerCrawler({
         requestList,
@@ -175,7 +79,7 @@ Apify.main(async () => {
             log.info(`open url(${request.userData.label}): ${page.url()}`);
 
             // Check if startUrl was open correctly
-            if (input.startUrls) {
+            if (startUrls) {
                 const pageUrl = page.url();
                 if (pageUrl.length < request.url.length) {
                     await retireBrowser(puppeteerPool, page, requestQueue, request);
@@ -202,7 +106,7 @@ Apify.main(async () => {
 
                 // Check if the page was open through working proxy.
                 const pageUrl = page.url();
-                if (!input.startUrls && pageUrl.indexOf('label') < 0) {
+                if (!startUrls && pageUrl.indexOf('label') < 0) {
                     await retireBrowser(puppeteerPool, page, requestQueue, request);
                     return;
                 }
@@ -242,13 +146,13 @@ Apify.main(async () => {
 
                 // Check if the page was open through working proxy.
                 const pageUrl = page.url();
-                if (!input.startUrls && pageUrl.indexOf(sortBy) < 0) {
+                if (!startUrls && pageUrl.indexOf(sortBy) < 0) {
                     await retireBrowser(puppeteerPool, page, requestQueue, request);
                     return;
                 }
 
                 // If it's aprropriate, enqueue all pagination pages
-                if (enqueuingReady && (!input.maxPages || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
+                if (enqueuingReady && (!maxPages || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
                     await enqueueAllPages(page, requestQueue, input);
                 }
 

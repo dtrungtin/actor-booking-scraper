@@ -2,3 +2,5 @@ apify_local
 node_modules
 apify_storage
 package-lock.json
+
+apify_storage
