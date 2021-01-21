@@ -121,7 +121,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
 
     return {
         order: userData.order,
-        url: addUrlParameters((await page.url()).split('?')[0], input),
+        url: addUrlParameters(page.url().split('?')[0], input),
         name: nameText[nameText.length - 1].trim(),
         type: await getAttribute(hType, 'textContent'),
         description: descriptionText || null,
