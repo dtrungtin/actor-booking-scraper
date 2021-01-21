@@ -47,6 +47,10 @@ Apify.main(async () => {
       =============`);
     } else if (daysInterval > 0) {
         log.info(`Using check-in / check-out with an interval of ${daysInterval} days`);
+    } else if (daysInterval === -1 && !input.simple) {
+        log.warning(`=============
+        You aren't providing both check-in and checkout dates, some information will be missing from the output
+      =============`);
     }
 
     let extendOutputFunction;
@@ -168,11 +172,11 @@ Apify.main(async () => {
         },
 
         handlePageFunction: async ({ page, request, puppeteerPool }) => {
-            log.info(`open url(${request.userData.label}): ${await page.url()}`);
+            log.info(`open url(${request.userData.label}): ${page.url()}`);
 
             // Check if startUrl was open correctly
             if (input.startUrls) {
-                const pageUrl = await page.url();
+                const pageUrl = page.url();
                 if (pageUrl.length < request.url.length) {
                     await retireBrowser(puppeteerPool, page, requestQueue, request);
                     return;
@@ -197,7 +201,7 @@ Apify.main(async () => {
                 await Apify.utils.puppeteer.injectJQuery(page);
 
                 // Check if the page was open through working proxy.
-                const pageUrl = await page.url();
+                const pageUrl = page.url();
                 if (!input.startUrls && pageUrl.indexOf('label') < 0) {
                     await retireBrowser(puppeteerPool, page, requestQueue, request);
                     return;
@@ -237,7 +241,7 @@ Apify.main(async () => {
                 const enqueuingReady = !(settingFilters || settingMinMaxPrice || settingPropertyType);
 
                 // Check if the page was open through working proxy.
-                const pageUrl = await page.url();
+                const pageUrl = page.url();
                 if (!input.startUrls && pageUrl.indexOf(sortBy) < 0) {
                     await retireBrowser(puppeteerPool, page, requestQueue, request);
                     return;
@@ -245,7 +249,7 @@ Apify.main(async () => {
 
                 // If it's aprropriate, enqueue all pagination pages
                 if (enqueuingReady && (!input.maxPages || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
-                    enqueueAllPages(page, requestQueue, input);
+                    await enqueueAllPages(page, requestQueue, input);
                 }
 
                 // If property type is enabled, enqueue necessary page.

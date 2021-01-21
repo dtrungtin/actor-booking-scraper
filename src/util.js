@@ -112,7 +112,7 @@ module.exports.getWorkingBrowser = async (startUrl, input, puppeteerOptions) => 
             // eslint-disable-next-line no-continue
             continue;
         }
-        const pageUrl = await page.url();
+        const pageUrl = page.url();
         if (pageUrl.indexOf(sortBy) > -1 || i === 999) {
             log.info('valid proxy found');
             await page.close();
@@ -288,7 +288,7 @@ module.exports.retireBrowser = async (puppeteerPool, page, requestQueue, request
  * @param {Object} input - The Actor input data object.
  */
 module.exports.enqueueAllPages = async (page, requestQueue, input) => {
-    const baseUrl = await page.url();
+    const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
         log.info('enqueuing pagination pages...');
         const pageSelector = '.bui-pagination__list a:not([aria-current])';
