@@ -233,5 +233,9 @@ The average consumption is **1 Compute unit for 75 actor pages** scraped
 * Booking.com sometimes returns some suggested hotels that are outside of the expected city/region as a recommendation.
   The ator will return all of them in the crawling results so you may recognize more results than your search.
 
+
+## Changelog
+This scraper is under active development. We are always implementing new features and fixing bugs. If you would like to see a new feature, please submit an issue on GitHub. Check [CHANGELOG.md](https://github.com/dtrungtin/actor-booking-scraper/blob/master/CHANGELOG.md) for a list of recent updates
+
 ## Epilogue
 Thank you for trying my actor. I will be very glad for a feedback that you can send to my email `dtrungtin@gmail.com`. If you find any bug, please create an issue on the [Github page](https://github.com/dtrungtin/actor-booking-scraper).
