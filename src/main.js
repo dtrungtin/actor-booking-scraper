@@ -20,7 +20,7 @@ Apify.main(async () => {
         minScore,
         sortBy = 'bayesian_review_score',
         maxPages,
-        proxyConfig,
+        proxyConfig = { useApifyProxy: true },
         enableAssets = false,
     } = input;
 
