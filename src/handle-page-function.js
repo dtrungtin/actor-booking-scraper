@@ -8,7 +8,7 @@ const {
 
 const { log } = Apify.utils;
 
-module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls, input,
+module.exports = async ({ page, request, session, requestQueue, startUrls, input,
     extendOutputFunction, sortBy, maxPages, state }) => {
     log.info(`open url(${request.userData.label}): ${page.url()}`);
 
@@ -17,7 +17,7 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
     if (startUrls) {
         const pageUrl = page.url();
         if (pageUrl.length < request.url.length) {
-            await puppeteerPool.retire(page.browser());
+            session.retire();
             throw new Error(`Start URL was not opened correctly`);
         }
     }
@@ -45,7 +45,7 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
         // Check if the page was open through working proxy.
         const pageUrl = page.url();
         if (!startUrls && pageUrl.indexOf('label') < 0) {
-            await puppeteerPool.retire(page.browser());
+            session.retire();
             throw new Error(`Page was not opened correctly`);
         }
 
@@ -85,7 +85,7 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
         // Check if the page was open through working proxy.
         const pageUrl = page.url();
         if (!startUrls && pageUrl.indexOf(sortBy) < 0) {
-            await puppeteerPool.retire(page.browser());
+            session.retire();
             throw new Error(`Page was not opened correctly`);
         }
 

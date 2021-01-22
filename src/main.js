@@ -50,6 +50,7 @@ Apify.main(async () => {
         requestQueue,
         handlePageTimeoutSecs: 120,
         proxyConfiguration,
+        useSessionPool: true,
         launchPuppeteerOptions: {
             // @ts-ignore
             ignoreHTTPSErrors: true,
