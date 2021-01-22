@@ -1,6 +1,7 @@
 ## 2021-01-22
 Features:
 - Added screenshots for errors
+- Added SessionPool
 
 Fixes:
 - Removed broken currency check (the main bug that prevented the scraper to work)
