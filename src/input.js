@@ -8,10 +8,16 @@ module.exports.validateInput = (input) => {
     if (!input.search && !input.startUrls) {
         throw new Error('WRONG INPUT: Missing "search" or "startUrls" attribute in INPUT!');
     } else if (input.search && input.startUrls && input.search.trim().length > 0 && input.startUrls.length > 0) {
-        throw new Error('WRONG INPUT: It is not possible to use both "search" and "startUrls" attributes in INPUT!');
+        log.warning(`Start URLs were provided. Will not use provided search input: ${input.search}.`);
     }
-    if (!(input.proxyConfig && input.proxyConfig.useApifyProxy)) {
-        throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy.');
+    // On Apify platform, proxy is mandatory
+    if (Apify.isAtHome()) {
+        const usesApifyProxy = input.proxyConfig && input.proxyConfig.useApifyProxy;
+        const usesCustomProxies = input.proxyConfig
+            && Array.isArray(input.proxyConfig.proxyUrls) && input.proxyConfig.proxyUrls.length > 0;
+        if (!(usesApifyProxy || usesCustomProxies)) {
+            throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
+        }
     }
     if (input.useFilters && input.propertyType !== 'none') {
         throw new Error('WRONG INPUT: Property type and filters cannot be used at the same time.');
