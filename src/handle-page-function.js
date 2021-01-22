@@ -13,6 +13,7 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
     extendOutputFunction, sortBy, maxPages, state }) => {
     log.info(`open url(${request.userData.label}): ${page.url()}`);
 
+    // TODO: This looks super weird, fix or remove
     // Check if startUrl was open correctly
     if (startUrls) {
         const pageUrl = page.url();
@@ -22,7 +23,9 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
         }
     }
 
+    // TODO: Fix or remove
     // Check if page was loaded with correct currency.
+    /*
     const curInput = await page.$('input[name="selected_currency"]');
     const currency = await getAttribute(curInput, 'value');
 
@@ -31,6 +34,7 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
         await retireBrowser(puppeteerPool, page, requestQueue, request);
         throw new Error(`Wrong currency: ${currency}, re-enqueuing...`);
     }
+    */
 
     if (request.userData.label === 'detail') { // Extract data from the hotel detail page
         // wait for necessary elements
