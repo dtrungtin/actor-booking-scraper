@@ -30,6 +30,3 @@ RUN npm --quiet set progress=false \
 # Since we do this after NPM install, quick build will be really fast
 # for simple source file changes.
 COPY . ./
-
-# Specify how to run the source code
-CMD npm start

@@ -137,8 +137,8 @@
         "proxyConfig": {
             "title": "Proxy configuration",
             "type": "object",
-            "description": "Optionally use Apify Proxy",
-            "prefill": { "useApifyProxy": true, "apifyProxyGroups": ["SHADER"] },
+            "description": "SHADER proxy group usually works the best if you have access to it.",
+            "prefill": { "useApifyProxy": true },
             "editor": "proxy"
         },
         "simple": {
