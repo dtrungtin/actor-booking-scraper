@@ -2,9 +2,8 @@ const Apify = require('apify');
 
 const { extractDetail, listPageFunction } = require('./extraction.js');
 const {
-    getAttribute, enqueueLinks, addUrlParameters, fixUrl,
+    getAttribute, enqueueLinks, addUrlParameters, fixUrl, isObject,
     isFiltered, isMinMaxPriceSet, setMinMaxPrice, isPropertyTypeSet, setPropertyType, enqueueAllPages,
-    retireBrowser, isObject,
 } = require('./util.js');
 
 const { log } = Apify.utils;
@@ -18,8 +17,8 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
     if (startUrls) {
         const pageUrl = page.url();
         if (pageUrl.length < request.url.length) {
-            await retireBrowser(puppeteerPool, page, requestQueue, request);
-            return;
+            await puppeteerPool.retire(page.browser());
+            throw new Error(`Start URL was not opened correctly`);
         }
     }
 
@@ -31,7 +30,6 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
 
     if (!currency || currency !== input.currency) {
         log.warning(`Currency wanted: ${input.currency}, currency found: ${currency}`);
-        await retireBrowser(puppeteerPool, page, requestQueue, request);
         throw new Error(`Wrong currency: ${currency}, re-enqueuing...`);
     }
     */
@@ -47,8 +45,8 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
         // Check if the page was open through working proxy.
         const pageUrl = page.url();
         if (!startUrls && pageUrl.indexOf('label') < 0) {
-            await retireBrowser(puppeteerPool, page, requestQueue, request);
-            return;
+            await puppeteerPool.retire(page.browser());
+            throw new Error(`Page was not opened correctly`);
         }
 
         // Exit if core data is not present ot the rating is too low.
@@ -87,8 +85,8 @@ module.exports = async ({ page, request, puppeteerPool, requestQueue, startUrls,
         // Check if the page was open through working proxy.
         const pageUrl = page.url();
         if (!startUrls && pageUrl.indexOf(sortBy) < 0) {
-            await retireBrowser(puppeteerPool, page, requestQueue, request);
-            return;
+            await puppeteerPool.retire(page.browser());
+            throw new Error(`Page was not opened correctly`);
         }
 
         // If it's aprropriate, enqueue all pagination pages

@@ -98,9 +98,7 @@ module.exports.getWorkingBrowser = async (startUrl, input, puppeteerOptions) => 
     for (let i = 0; i < 1000; i++) {
         log.info('testing proxy...');
 
-        const browser = await Apify.launchPuppeteer({
-            ...puppeteerOptions,
-        });
+        const browser = await Apify.launchPuppeteer(puppeteerOptions);
         const page = await browser.newPage();
 
         try {
@@ -234,11 +232,11 @@ module.exports.checkDate = (date) => {
         const dateMatch = moment(date, DATE_FORMAT);
 
         if (dateMatch.format(DATE_FORMAT) !== date) {
-            throw new Error(`Date should be in format ${DATE_FORMAT}`);
+            throw `WRONG INPUT: Date should be in format ${DATE_FORMAT}`;
         }
 
         if (dateMatch.isBefore(moment())) {
-            throw new Error(`You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`);
+            throw `WRONG INPUT: You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`;
         }
 
         return dateMatch;
@@ -258,26 +256,13 @@ module.exports.checkDate = (date) => {
 exports.checkDateGap = (checkIn, checkOut) => {
     if (checkIn && checkOut) {
         if (!checkOut.isSameOrAfter(checkIn)) {
-            throw new Error(`checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`);
+            throw `WRONG INPUT: checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`;
         }
 
         return checkOut.diff(checkIn, 'days', true);
     }
 
     return -1;
-};
-
-/**
- * Tells the crawler to re-enqueue current page and destroy the browser.
- * Necessary if the page was open through a not working proxy.
- */
-module.exports.retireBrowser = async (puppeteerPool, page, requestQueue, request) => {
-    await puppeteerPool.retire(page.browser());
-    await requestQueue.addRequest({
-        url: request.url,
-        userData: request.userData,
-        uniqueKey: `${Math.random()}`,
-    });
 };
 
 /**

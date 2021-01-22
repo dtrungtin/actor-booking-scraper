@@ -1,3 +1,14 @@
 {
-  "extends": "@apify"
+    "extends": "@apify",
+    "rules": {
+        "no-confusing-arrow": "off",
+        "camelcase": "off",
+        "no-continue": "off",
+        "no-throw-literal": "off",
+        "no-console": "off",
+        "object-property-newline": "off",
+        "no-underscore-dangle": "off",
+        "prefer-destructuring": "off",
+        "operator-linebreak": "off"
+    }
 }

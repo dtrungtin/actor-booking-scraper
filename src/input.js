@@ -6,7 +6,7 @@ const { log } = Apify.utils;
 
 module.exports.validateInput = (input) => {
     if (!input.search && !input.startUrls) {
-        throw new Error('WRONG INPUT: Missing "search" or "startUrls" attribute in INPUT!');
+        throw 'WRONG INPUT: Missing "search" or "startUrls" attribute in INPUT!';
     } else if (input.search && input.startUrls && input.search.trim().length > 0 && input.startUrls.length > 0) {
         log.warning(`Start URLs were provided. Will not use provided search input: ${input.search}.`);
     }
@@ -16,15 +16,15 @@ module.exports.validateInput = (input) => {
         const usesCustomProxies = input.proxyConfig
             && Array.isArray(input.proxyConfig.proxyUrls) && input.proxyConfig.proxyUrls.length > 0;
         if (!(usesApifyProxy || usesCustomProxies)) {
-            throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
+            throw 'WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.';
         }
     }
     if (input.useFilters && input.propertyType !== 'none') {
-        throw new Error('WRONG INPUT: Property type and filters cannot be used at the same time.');
+        throw 'WRONG INPUT: Property type and filters cannot be used at the same time.';
     }
 
     if (input.startUrls && !Array.isArray(input.startUrls)) {
-        throw new Error('WRONG INPUT: startUrls must an array!');
+        throw 'WRONG INPUT: startUrls must an array!';
     }
 
     const daysInterval = checkDateGap(checkDate(input.checkIn), checkDate(input.checkOut));
@@ -59,10 +59,10 @@ module.exports.evalExtendOutputFn = (input) => {
             // eslint-disable-next-line no-eval
             extendOutputFunction = eval(input.extendOutputFunction);
         } catch (e) {
-            throw new Error(`'extendOutputFunction' is not valid Javascript! Error: ${e}`);
+            throw `WRONG INPUT: 'extendOutputFunction' is not valid Javascript! Error: ${e}`;
         }
         if (typeof extendOutputFunction !== 'function') {
-            throw new Error('extendOutputFunction is not a function! Please fix it or use just default ouput!');
+            throw 'WRONG INPUT: extendOutputFunction is not a function! Please fix it or use just default ouput!';
         }
     }
     return extendOutputFunction;
