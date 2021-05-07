@@ -145,7 +145,7 @@
             "title": "Extract hotel list pages only (no detail)",
             "type": "boolean",
             "description": "The crawler will get only the data available on the list page and not go to the hotel detail page.",
-            "default": true
+            "default": false
         },
         "useFilters": {
             "title": "Circumvent 1000 results limitation (uses criteria filters, slower)",
