@@ -1,5 +1,5 @@
 const Puppeteer = require('puppeteer'); // eslint-disable-line
-const { getAttribute, addUrlParameters } = require('./util.js');
+const { getAttribute, addUrlParameters } = require('./util.js'); // eslint-disable-line
 
 /**
  * Extracts information about all rooms listed by the hotel using jQuery in browser context.
@@ -92,29 +92,34 @@ const extractRoomsJQuery = () => {
  * @param {Object} input - The Actor input data object.
  */
 module.exports.extractDetail = async (page, ld, input, userData) => {
-    const addr = ld.address || null;
+    const { address: { streetAddress, postalCode, addressLocality, addressCountry, addressRegion }, hasMap, aggregateRating } = ld;
     const address = {
-        full: addr.streetAddress,
-        postalCode: addr.postalCode,
-        street: addr.addressLocality,
-        country: addr.addressCountry,
-        region: addr.addressRegion,
+        full: streetAddress,
+        postalCode,
+        street: addressLocality,
+        country: addressCountry,
+        region: addressRegion,
     };
     const html = await page.content();
     const name = await page.$('#hp_hotel_name');
-    const nameText = (await getAttribute(name, 'textContent')).split('\n');
+    const nameText = name ? (await getAttribute(name, 'textContent')).split('\n') : null;
     const description = await page.$('#property_description_content');
-    const descriptionText = await getAttribute(description, 'textContent');
+    const descriptionText = description ? await getAttribute(description, 'textContent') : null;
     const hType = await page.$('.hp__hotel-type-badge');
     const bFast = await page.$('.ph-item-copy-breakfast-option');
-    const starIcon = await page.$('i.bk-icon-stars');
-    const starTitle = await getAttribute(starIcon, 'title');
-    const stars = starTitle ? starTitle.match(/\d/) : null;
-    const loc = ld.hasMap ? ld.hasMap.match(/%7c(\d+\.\d+),(\d+\.\d+)/) : null;
+    const starTitle = await page.evaluate(() => {
+        const el = document.querySelector('.bui-rating');
+        return el ? el.getAttribute('aria-label') : null;
+    });
+    const parts = starTitle ? starTitle.match(/\d/) : null;
+    const stars = parts ? parseInt(parts[0], 10) : null;
+    const loc = hasMap ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/) : null;
     const cInOut = await page.$('.av-summary-section:nth-child(1) .bui-date-range__item:nth-child(1) .bui-date__subtitle');
     const cMatch = cInOut ? (await getAttribute(cInOut, 'textContent')).match(/\d+:(\d+)/g) : null;
-    const img1 = await getAttribute(await page.$('.slick-track img'), 'src');
-    const img2 = await getAttribute(await page.$('#photo_wrapper img'), 'src');
+    const img1El = await page.$('.slick-track img');
+    const img1 = img1El ? await getAttribute(img1El, 'src') : null;
+    const img2El = await page.$('#photo_wrapper img');
+    const img2 = img2El ? await getAttribute(img2El, 'src') : null;
     const img3 = html.match(/large_url: '(.+)'/);
     const rooms = await page.evaluate(extractRoomsJQuery);
     const price = rooms.length > 0 ? rooms[0].price : null;
@@ -122,14 +127,14 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     return {
         order: userData.order,
         url: addUrlParameters(page.url().split('?')[0], input),
-        name: nameText[nameText.length - 1].trim(),
-        type: await getAttribute(hType, 'textContent'),
+        name: nameText ? nameText[nameText.length - 1].trim() : null,
+        type: hType ? await getAttribute(hType, 'textContent') : null,
         description: descriptionText || null,
-        stars: stars ? stars[0] : null,
+        stars,
         price,
-        rating: ld.aggregateRating ? ld.aggregateRating.ratingValue : null,
-        reviews: ld.aggregateRating ? ld.aggregateRating.reviewCount : null,
-        breakfast: await getAttribute(bFast, 'textContent'),
+        rating: aggregateRating ? aggregateRating.ratingValue : null,
+        reviews: aggregateRating ? aggregateRating.reviewCount : null,
+        breakfast: bFast ? await getAttribute(bFast, 'textContent') : null,
         checkInFrom: (cMatch && cMatch.length > 1) ? cMatch[0] : null,
         checkInTo: (cMatch && cMatch.length > 1) ? cMatch[1] : null,
         location: (loc && loc.length > 2) ? { lat: loc[1], lng: loc[2] } : null,
@@ -145,6 +150,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
  * @param {Object} input - The Actor input data object.
  */
 module.exports.listPageFunction = (input) => new Promise((resolve) => {
+    const { minScore } = input;
     const $ = window.jQuery;
 
     /**
@@ -222,7 +228,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 location: latlng ? { lat: latlng[0], lng: latlng[1] } : null,
                 image,
             };
-            if (!item.rating || item.rating >= (input.minScore || 0)) { result.push(item); }
+            if (!item.rating || item.rating >= (minScore || 0)) { result.push(item); }
             if (++finished >= started) { resolve(result); }
         });
     });

@@ -22,6 +22,7 @@ Apify.main(async () => {
         maxPages,
         proxyConfig = { useApifyProxy: true },
         enableAssets = false,
+        testProxy,
     } = input;
 
     const errorSnapshotter = new ErrorSnapshotter();
@@ -74,7 +75,7 @@ Apify.main(async () => {
             userAgent: USER_AGENT,
         },
         launchPuppeteerFunction: async (options) => {
-            if (!input.testProxy) {
+            if (!testProxy) {
                 return Apify.launchPuppeteer({
                     ...options,
                 });
