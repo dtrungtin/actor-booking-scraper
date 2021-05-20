@@ -25,7 +25,7 @@ module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sort
                 if (typeof request === 'string') { request = { url: request }; }
 
                 // TODO: Figure out how to fix this
-                if ((!request.userData || !request.userData.label !== 'detail') && request.url.indexOf('/hotel/') > -1) {
+                if ((!request.userData || !(request.userData.label !== 'detail')) && request.url.indexOf('/hotel/') > -1) {
                     request.userData = { label: 'detail' };
                 }
 
@@ -45,7 +45,7 @@ module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sort
         startUrl += '&rows=25';
         log.info(`startUrl: ${startUrl}`);
         requestSources.push({ url: startUrl, userData: { label: 'start' } });
-        if (!input.useFilters && input.propertyType === 'none' && maxPages) {
+        if (!input.useFilters && input.minMaxPrice === 'none' && input.propertyType === 'none' && maxPages) {
             for (let i = 1; i < maxPages; i++) {
                 requestSources.push({
                     url: `${startUrl}&offset=${25 * i}`,

@@ -50,7 +50,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         }
 
         // Exit if core data is not present ot the rating is too low.
-        if (!ld || (ld.aggregateRating && ld.aggregateRating.ratingValue <= (input.minScore || 0))) {
+        if (!ld || (ld.aggregateRating && ld.aggregateRating.ratingValue < (input.minScore || 0))) {
             return;
         }
 
@@ -90,8 +90,12 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         }
 
         // If it's aprropriate, enqueue all pagination pages
-        if (enqueuingReady && (!maxPages || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
-            await enqueueAllPages(page, requestQueue, input);
+        if (enqueuingReady && (!maxPages || input.useFilters || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
+            if (input.useFilters) {
+                await enqueueAllPages(page, requestQueue, input, 0);
+            } else if (!maxPages || maxPages > 1) {
+                await enqueueAllPages(page, requestQueue, input, maxPages);
+            }
         }
 
         // If property type is enabled, enqueue necessary page.
@@ -105,7 +109,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         }
 
         // If filtering is enabled, enqueue necessary pages.
-        if (input.useFilters && !filtered) {
+        if (settingFilters) {
             log.info('enqueuing filtered pages...');
 
             await enqueueLinks(page, requestQueue, '.filterelement', null, 'page', fixUrl('&', input), async (link) => {
@@ -168,5 +172,4 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
             }
         }
     }
-}
-
+};

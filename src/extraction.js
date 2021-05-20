@@ -205,7 +205,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             const taxAndFeeText = jThis.find('.prd-taxes-and-fees-under-price').eq(0).text().trim();
             const taxAndFee = taxAndFeeText.match(/\d+/);
             const rat = $(sr).attr('data-score');
-            const starAttr = jThis.find('i.star_track svg').attr('class');
+            const starAttr = jThis.find('.bui-rating').attr('aria-label');
             const stars = starAttr ? starAttr.match(/\d/) : null;
             const buiLink1 = jThis.find('.bui-link--primary');
             const buiLink2 = jThis.find('a.district_link, .bui-link').eq(0);

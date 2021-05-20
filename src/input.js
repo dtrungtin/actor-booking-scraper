@@ -4,6 +4,10 @@ const { checkDate, checkDateGap } = require('./util.js');
 
 const { log } = Apify.utils;
 
+/**
+ * Validate Actor input.
+ * @param {Object} input - The Actor input data object.
+ */
 module.exports.validateInput = (input) => {
     if (!input.search && !input.startUrls) {
         throw 'WRONG INPUT: Missing "search" or "startUrls" attribute in INPUT!';
@@ -21,6 +25,10 @@ module.exports.validateInput = (input) => {
     }
     if (input.useFilters && input.propertyType !== 'none') {
         throw 'WRONG INPUT: Property type and filters cannot be used at the same time.';
+    }
+
+    if (input.useFilters && input.minMaxPrice !== 'none') {
+        throw 'WRONG INPUT: Price range and filters cannot be used at the same time.';
     }
 
     if (input.startUrls && !Array.isArray(input.startUrls)) {

@@ -213,6 +213,12 @@ module.exports.setMinMaxPrice = async (page, input, requestQueue) => {
     const index = pLabels.indexOf(input.minMaxPrice);
     const label = await (fPrices[index]).$('.filter_label');
     const fText = await getAttribute(label, 'textContent');
+    const fLabel = fText.replace(/[^\d-+]/g, '');
+    if (!pLabels.includes(fLabel)) {
+        log.error(`Cannot find price range filter: ${input.minMaxPrice}`);
+        process.exit(1);
+    }
+
     log.info(`Using filter: ${fText}`);
     const href = await getAttribute(fPrices[index], 'href');
     await requestQueue.addRequest({
@@ -271,8 +277,9 @@ exports.checkDateGap = (checkIn, checkOut) => {
  * @param {Page} page - The Puppeteer page object.
  * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
  * @param {Object} input - The Actor input data object.
+ * @param {Number} maxPages - Maximum pagination pages.
  */
-module.exports.enqueueAllPages = async (page, requestQueue, input) => {
+module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => {
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
         log.info('enqueuing pagination pages...');
@@ -287,10 +294,14 @@ module.exports.enqueueAllPages = async (page, requestQueue, input) => {
             const countData = (await getAttribute(countElem, 'textContent')).replace(/\.|,|\s/g, '').match(/\d+/);
 
             if (countData) {
-                const count = Math.ceil(parseInt(countData[0], 10) / 25);
+                let count = Math.ceil(parseInt(countData[0], 10) / 25);
                 log.info(`pagination pages: ${count}`);
+                if (maxPages && maxPages > 0 && maxPages < count) {
+                    count = maxPages;
+                    log.info(`max pagination pages: ${count}`);
+                }
 
-                for (let i = 0; i < count; i++) {
+                for (let i = 1; i < count; i++) {
                     const newUrl = pageUrl.replace(/rows=(\d+)/, 'rows=25').replace(/offset=(\d+)/, `offset=${25 * i}`);
                     await requestQueue.addRequest({
                         url: addUrlParameters(newUrl, input),
