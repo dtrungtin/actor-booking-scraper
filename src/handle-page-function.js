@@ -75,6 +75,10 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
 
         await Apify.pushData({ ...detail, ...userResult });
     } else {
+        const heading = await page.$('[data-block-id=heading] h1');
+        const headingText = heading ? (await getAttribute(heading, 'textContent')).trim() : 'No heading found.';
+        log.info(headingText);
+
         // Handle hotel list page.
         const filtered = await isFiltered(page);
         const settingFilters = input.useFilters && !filtered;
