@@ -228,7 +228,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 location: latlng ? { lat: latlng[0], lng: latlng[1] } : null,
                 image,
             };
-            if (!item.rating || item.rating >= (minScore || 0)) { result.push(item); }
+            if (!minScore || (item.rating && item.rating >= minScore)) { result.push(item); }
             if (++finished >= started) { resolve(result); }
         });
     });

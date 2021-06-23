@@ -50,7 +50,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         }
 
         // Exit if core data is not present ot the rating is too low.
-        if (!ld || (ld.aggregateRating && ld.aggregateRating.ratingValue < (input.minScore || 0))) {
+        if (!ld || (input.minScore && ld.aggregateRating && ld.aggregateRating.ratingValue < input.minScore)) {
             return;
         }
 
