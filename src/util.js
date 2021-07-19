@@ -45,11 +45,95 @@ module.exports.enqueueLinks = async (page, requestQueue, selector, condition, la
 };
 
 /**
+ * Adds URL parameters to a Booking.com Hotel Detail URL (timespan, language and currency).
+ * @param {string} url - Booking.com URL to add the parameters to.
+ * @param {Object} input - The Actor input data object.
+ */
+const addUrlParametersForHotelDetailUrl = (url, input) => {
+    const { currency, language, checkIn, checkOut, adults, children, rooms } = input;
+    if (checkIn && checkOut) {
+        const ci = checkIn.split(/-|\//);
+        const co = checkOut.split(/-|\//);
+
+        const coAdd = `;checkout=${co[0]}-${co[1]}-${co[2]}`;
+        const ciAdd = `;checkin=${ci[0]}-${ci[1]}-${ci[2]}`;
+
+        if (url.includes(';checkin=')) {
+            url = url.replace(/;checkin=[\d-]*/, ciAdd);
+        } else {
+            url = url.replace(';', `${ciAdd};`);
+        }
+
+        if (url.includes(';checkout=')) {
+            url = url.replace(/;checkout=[\d-]*/, coAdd);
+        } else {
+            url = url.replace(';', `${coAdd};`);
+        }
+    }
+
+    if (currency) {
+        const curAdd = `;selected_currency=${currency.toUpperCase()};changed_currency=1;top_currency=1`;
+        if (url.includes(';selected_currency=')) {
+            url = url.replace(/;selected_currency=\w*/, `;selected_currency=${currency.toUpperCase()}`);
+        } else {
+            url = url.replace(';', `${curAdd};`);
+        }
+    }
+
+    if (language) {
+        const lng = language.replace('_', '-');
+        const lngAdd = `;lang=${lng}`;
+
+        if (url.includes(';lang=')) {
+            url = url.replace(/;lang=[\w-]*/, lngAdd);
+        } else {
+            url = url.replace(';', `${lngAdd};`);
+        }
+    }
+
+    if (adults) {
+        const adAdd = `;group_adults=${adults}`;
+
+        if (url.includes(';group_adults=')) {
+            url = url.replace(/;group_adults=\d*/, adAdd);
+        } else {
+            url = url.replace(';', `${adAdd};`);
+        }
+    }
+
+    if (children) {
+        const cdAdd = `;group_children=${children}`;
+        if (url.includes(';group_children=')) {
+            url = url.replace(/;group_children=\d*/, cdAdd);
+        } else {
+            url = url.replace(';', `${cdAdd};`);
+        }
+    }
+
+    if (rooms) {
+        const rmAdd = `;no_rooms=${rooms}`;
+        if (url.includes(';no_rooms=')) {
+            url = url.replace(/;no_rooms=\d*/, rmAdd);
+        } else {
+            url = url.replace(';', `${rmAdd};`);
+        }
+    }
+
+    console.log(url);
+
+    return url;
+};
+
+/**
  * Adds URL parameters to a Booking.com URL (timespan, language and currency).
  * @param {string} url - Booking.com URL to add the parameters to.
  * @param {Object} input - The Actor input data object.
  */
 const addUrlParameters = (url, input) => {
+    if (url.includes('/hotel/') && url.includes(';')) {
+        return addUrlParametersForHotelDetailUrl(url, input);
+    }
+
     if (url.indexOf('?') < 0) { url += '?'; }
     if (input.checkIn && input.checkOut) {
         const ci = input.checkIn.split(/-|\//);
@@ -61,6 +145,7 @@ const addUrlParameters = (url, input) => {
         if (!url.includes(ciAdd)) { url += ciAdd; }
         if (!url.includes(coAdd)) { url += coAdd; }
     }
+
     if (input.currency) {
         const curAdd = `&selected_currency=${input.currency.toUpperCase()}&changed_currency=1&top_currency=1`;
         if (!url.includes(curAdd)) { url += curAdd; }

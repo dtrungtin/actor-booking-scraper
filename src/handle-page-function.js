@@ -14,13 +14,13 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
 
     // TODO: This looks super weird, fix or remove
     // Check if startUrl was open correctly
-    if (startUrls) {
-        const pageUrl = page.url();
-        if (pageUrl.length < request.url.length) {
-            session.retire();
-            throw new Error(`Start URL was not opened correctly`);
-        }
-    }
+    // if (startUrls) {
+    //     const pageUrl = page.url();
+    //     if (pageUrl.length < request.url.length) {
+    //         session.retire();
+    //         throw new Error(`Start URL was not opened correctly`);
+    //     }
+    // }
 
     // TODO: Fix or remove
     // Check if page was loaded with correct currency.
