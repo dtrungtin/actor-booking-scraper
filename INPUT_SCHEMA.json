@@ -34,7 +34,7 @@
             "title": "Order results by",
             "type": "string",
             "description": "Hotel attribute by which the results will be ordered",
-            "default": "distance_from_search",
+            "prefill": "distance_from_search",
             "enum": [
                 "upsort_bh",
                 "price",
