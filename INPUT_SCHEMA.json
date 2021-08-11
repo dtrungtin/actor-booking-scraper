@@ -7,7 +7,7 @@
             "title": "Booking search query",
             "type": "string",
             "description": "Query string to be searched on Booking.com",
-            "prefill": "Paris",
+            "prefill": "New York",
             "editor": "textfield"
         },
         "destType": {
@@ -34,7 +34,7 @@
             "title": "Order results by",
             "type": "string",
             "description": "Hotel attribute by which the results will be ordered",
-            "default": "bayesian_review_score",
+            "default": "distance_from_search",
             "enum": [
                 "upsort_bh",
                 "price",
@@ -66,7 +66,8 @@
             "title": "Maximum pagination pages",
             "type": "integer",
             "description": "Number of pagination pages to be crawled",
-            "maximum": 1000000
+            "maximum": 1000000,
+            "prefill": 2
         },
         "checkIn": {
             "title": "Check-in date (yyyy-mm-dd)",
@@ -107,15 +108,16 @@
             "title": "Preferred currency",
             "type": "string",
             "description": "Currency code to be set on the site",
-            "default": "EUR",
+            "prefill": "USD", 
             "enum": ["ARS","AUD","AZN","BHD","BRL","BGN","CAD","XOF","CLP","CNY","COP","CZK","DKK","EGP","EUR","FJD","GEL","HKD","HUF","INR","IDR","ILS","JPY","JOD","KZT","KRW","KWD","MYR","MXN","MDL","NAD","TWD","NZD","NOK","OMR","PLN","GBP","QAR","RON","RUB","SAR","SGD","ZAR","SEK","CHF","THB","TRY","AED","USD","UAH"],
-            "enumTitles": ["AR$ - Argentine peso", "AUD - Australian dollar", "AZN - Azerbaijan, New Manats", "BHD - Bahrain dinar", "R$ - Brazilian real", "BGN - Bulgarian lev", "CAD - Canadian dollar", "XOF - CFA Franc BCEAO", "CL$ - Chilean peso", "CNY - Chinese yuan", "COP - Colombian peso", "Kč - Czech koruna", "DKK - Danish krone", "EGP - Egyptian pound", "€ - Euro", "FJD - Fijian dollar", "GEL - Georgian lari", "HK$ - Hong Kong Dollar", "HUF - Hungarian forint", "Rs. - Indian rupee", "Rp - Indonesian rupiah", "₪ - Israeli new sheqel", "¥ - Japanese yen", "JOD - Jordanian dinar", "KZT - Kazakhstani tenge", "KRW - Korean won", "KWD - Kuwaiti dinar", "MYR - Malaysian ringgit", "MXN - Mexican peso", "MDL - Moldovan leu", "NAD - Namibian Dollar", "TWD - New Taiwan Dollar", "NZD - New Zealand dollar", "NOK - Norwegian krone", "OMR - Omani rial", "zł - Polish zloty", "£ - Pound sterling", "QAR - Qatar riyal", "lei - Romanian new leu", "RUB - Russian Ruble", "SAR - Saudi Arabian riyal", "S$ - Singapore dollar", "ZAR - South African rand", "SEK - Swedish krona", "CHF - Swiss franc", "THB - Thai baht", "TL - Turkish lira", "AED - U.A.E. dirham", "US$ - U.S. dollar", "UAH - Ukraine Hryvnia"]
+            "enumTitles": ["AR$ - Argentine peso", "AUD - Australian dollar", "AZN - Azerbaijan, New Manats", "BHD - Bahrain dinar", "R$ - Brazilian real", "BGN - Bulgarian lev", "CAD - Canadian dollar", "XOF - CFA Franc BCEAO", "CL$ - Chilean peso", "CNY - Chinese yuan", "COP - Colombian peso", "Kč - Czech koruna", "DKK - Danish krone", "EGP - Egyptian pound", "€ - 
+                           o", "FJD - Fijian dollar", "GEL - Georgian lari", "HK$ - Hong Kong Dollar", "HUF - Hungarian forint", "Rs. - Indian rupee", "Rp - Indonesian rupiah", "₪ - Israeli new sheqel", "¥ - Japanese yen", "JOD - Jordanian dinar", "KZT - Kazakhstani tenge", "KRW - Korean won", "KWD - Kuwaiti dinar", "MYR - Malaysian ringgit", "MXN - Mexican peso", "MDL - Moldovan leu", "NAD - Namibian Dollar", "TWD - New Taiwan Dollar", "NZD - New Zealand dollar", "NOK - Norwegian krone", "OMR - Omani rial", "zł - Polish zloty", "£ - Pound sterling", "QAR - Qatar riyal", "lei - Romanian new leu", "RUB - Russian Ruble", "SAR - Saudi Arabian riyal", "S$ - Singapore dollar", "ZAR - South African rand", "SEK - Swedish krona", "CHF - Swiss franc", "THB - Thai baht", "TL - Turkish lira", "AED - U.A.E. dirham", "US$ - U.S. dollar", "UAH - Ukraine Hryvnia"]
         },
         "language": {
             "title": "Language",
             "type": "string",
             "description": "Language code to be set on the site",
-            "default": "en-gb",
+            "prefill": "en-us",
             "enum": ["en-gb","en-us","de","nl","fr","es","es-ar","ca","it","pt-pt","pt-br","no","fi","sv","da","cs","hu","ro","ja","zh-cn","zh-tw","pl","el","ru","tr","bg","ar","ko","he","lv","uk","id","ms","th","et","hr","lt","sk","sr","sl","vi","tl","is"],
             "enumTitles": ["English (UK)","English (US)","Deutsch","Nederlands","Français","Español","Español (AR)","Català","Italiano","Português (PT)","Português (BR)","Norsk","Suomi","Svenska","Dansk","Čeština","Magyar","Română","日本語","简体中文","繁體中文","Polski","Ελληνικά","Русский","Türkçe","Български","العربية","한국어","עברית","Latviski","Українська","Bahasa Indonesia","Bahasa Malaysia","ภาษาไทย","Eesti","Hrvatski","Lietuvių","Slovenčina","Srpski","Slovenščina","Tiếng Việt","Filipino","Íslenska"]
         },
