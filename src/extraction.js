@@ -123,6 +123,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const img3 = html.match(/large_url: '(.+)'/);
     const rooms = await page.evaluate(extractRoomsJQuery);
     const price = rooms.length > 0 ? rooms[0].price : null;
+    const images = await page.evaluate(() => { return window.booking.env.hotelPhotos.map((photo) => photo.large_url); });
 
     return {
         order: userData.order,
@@ -141,6 +142,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         address,
         image: img1 || img2 || (img3 ? img3[1] : null),
         rooms,
+        images,
     };
 };
 
