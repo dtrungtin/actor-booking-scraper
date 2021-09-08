@@ -186,7 +186,13 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
     "country": "Czech Republic",
     "region": ""
   },
-  "image": "https://t-ec.bstatic.com/images/hotel/max1024x768/183/183313960.jpg",
+  "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/303439628.jpg?k=7f001a9cbf85160050efc5437e3ba5adac7b23db47a5a2dbb8c10640b4e7b042&o=&hp=1",
+  "images": [
+    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/303439628.jpg?k=7f001a9cbf85160050efc5437e3ba5adac7b23db47a5a2dbb8c10640b4e7b042&o=&hp=1",
+    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/202101343.jpg?k=afd7a3e75f1f758b4137f9605645e7e23d42eadc9e18137d3c435d628b11c46d&o=&hp=1",
+    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/183313960.jpg?k=fb7411388bf11432cf7613ab3318d5b5f1d767741f18095d034d4f430252a841&o=&hp=1",
+    ...
+  ],
   "rooms": [
     {
       "available": true,
