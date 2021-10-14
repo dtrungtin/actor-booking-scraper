@@ -42,7 +42,6 @@ module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sort
         startUrl = addUrlParameters(startUrl, input);
 
         // Enqueue all pagination pages.
-        startUrl += '&rows=25';
         log.info(`startUrl: ${startUrl}`);
         requestSources.push({ url: startUrl, userData: { label: 'start' } });
         if (!input.useFilters && input.minMaxPrice === 'none' && input.propertyType === 'none' && maxPages) {
@@ -55,4 +54,4 @@ module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sort
         }
     }
     return { requestSources, startUrl };
-}
+};

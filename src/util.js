@@ -173,40 +173,6 @@ const addUrlParameters = (url, input) => {
 module.exports.addUrlParameters = addUrlParameters;
 
 /**
- * Finds a browser instance with working proxy for Booking.com.
- * @param {string} startUrl - Booking.com URL to test for loading.
- * @param {Object} input - The Actor input data object.
- * @param {Object} puppeteerOptions - The puppeteer options to launch.
- */
-module.exports.getWorkingBrowser = async (startUrl, input, puppeteerOptions) => {
-    const sortBy = input.sortBy || 'bayesian_review_score';
-    for (let i = 0; i < 1000; i++) {
-        log.info('testing proxy...');
-
-        const browser = await Apify.launchPuppeteer(puppeteerOptions);
-        const page = await browser.newPage();
-
-        try {
-            await page.goto(startUrl, { timeout: 60000 });
-            // await page.waitForNavigation({ timeout: 60000 });
-        } catch (e) {
-            log.info('invalid proxy, retrying...');
-            log.info(e);
-            // eslint-disable-next-line no-continue
-            continue;
-        }
-        const pageUrl = page.url();
-        if (pageUrl.indexOf(sortBy) > -1 || i === 999) {
-            log.info('valid proxy found');
-            await page.close();
-            return browser;
-        }
-        log.info('invalid proxy, retrying...');
-        await browser.close();
-    }
-};
-
-/**
  * Creates a function to make sure the URL contains all necessary attributes from INPUT.
  * @param {string} s - The URL attribute separator (& or ;).
  */
@@ -229,7 +195,7 @@ module.exports.fixUrl = fixUrl;
  * Checks if page has some criteria filtering enabled.
  * @param {Page} page - The page to be checked.
  */
-module.exports.isFiltered = page => page.$('.filterelement.active');
+module.exports.isFiltered = (page) => page.$('.filterelement.active');
 
 module.exports.isPropertyTypeSet = async (page, input) => {
     if (input.propertyType !== 'none') {
@@ -323,11 +289,11 @@ module.exports.checkDate = (date) => {
         const dateMatch = moment(date, DATE_FORMAT);
 
         if (dateMatch.format(DATE_FORMAT) !== date) {
-            throw `WRONG INPUT: Date should be in format ${DATE_FORMAT}`;
+            throw new Error(`WRONG INPUT: Date should be in format ${DATE_FORMAT}`);
         }
 
         if (dateMatch.isBefore(moment())) {
-            throw `WRONG INPUT: You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`;
+            throw new Error(`WRONG INPUT: You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`);
         }
 
         return dateMatch;
@@ -347,7 +313,8 @@ module.exports.checkDate = (date) => {
 exports.checkDateGap = (checkIn, checkOut) => {
     if (checkIn && checkOut) {
         if (!checkOut.isSameOrAfter(checkIn)) {
-            throw `WRONG INPUT: checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`;
+            // eslint-disable-next-line max-len
+            throw new Error(`WRONG INPUT: checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`);
         }
 
         return checkOut.diff(checkIn, 'days', true);
@@ -368,12 +335,9 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
         log.info('enqueuing pagination pages...');
-        const pageSelector = '.bui-pagination__list a:not([aria-current])';
-        const countSelector = '.sorth1, .sr_header h1, .sr_header h2';
+        const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
         try {
-            await page.waitForSelector(pageSelector, { timeout: 60000 });
-            const pageElem = await page.$(pageSelector);
-            const pageUrl = await getAttribute(pageElem, 'href');
+            const pageUrl = await page.url();
             await page.waitForSelector(countSelector);
             const countElem = await page.$(countSelector);
             const countData = (await getAttribute(countElem, 'textContent')).replace(/\.|,|\s/g, '').match(/\d+/);
@@ -387,7 +351,7 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
                 }
 
                 for (let i = 1; i < count; i++) {
-                    const newUrl = pageUrl.replace(/rows=(\d+)/, 'rows=25').replace(/offset=(\d+)/, `offset=${25 * i}`);
+                    const newUrl = pageUrl.includes('offset=') ? pageUrl.replace(/offset=(\d+)/, `offset=${25 * i}`) : `${pageUrl}&offset=${25 * i}`;
                     await requestQueue.addRequest({
                         url: addUrlParameters(newUrl, input),
                         userData: { label: 'page' },
@@ -400,4 +364,4 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
     }
 };
 
-module.exports.isObject = val => typeof val === 'object' && val !== null && !Array.isArray(val);
+module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);

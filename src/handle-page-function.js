@@ -1,38 +1,16 @@
 const Apify = require('apify');
 
-const { extractDetail, listPageFunction } = require('./extraction.js');
+const { extractDetail, listPageFunction } = require('./extraction');
 const {
     getAttribute, enqueueLinks, addUrlParameters, fixUrl, isObject,
     isFiltered, isMinMaxPriceSet, setMinMaxPrice, isPropertyTypeSet, setPropertyType, enqueueAllPages,
-} = require('./util.js');
+} = require('./util');
 
 const { log } = Apify.utils;
 
 module.exports = async ({ page, request, session, requestQueue, startUrls, input,
     extendOutputFunction, sortBy, maxPages, state }) => {
     log.info(`open url(${request.userData.label}): ${page.url()}`);
-
-    // TODO: This looks super weird, fix or remove
-    // Check if startUrl was open correctly
-    // if (startUrls) {
-    //     const pageUrl = page.url();
-    //     if (pageUrl.length < request.url.length) {
-    //         session.retire();
-    //         throw new Error(`Start URL was not opened correctly`);
-    //     }
-    // }
-
-    // TODO: Fix or remove
-    // Check if page was loaded with correct currency.
-    /*
-    const curInput = await page.$('input[name="selected_currency"]');
-    const currency = await getAttribute(curInput, 'value');
-
-    if (!currency || currency !== input.currency) {
-        log.warning(`Currency wanted: ${input.currency}, currency found: ${currency}`);
-        throw new Error(`Wrong currency: ${currency}, re-enqueuing...`);
-    }
-    */
 
     if (request.userData.label === 'detail') { // Extract data from the hotel detail page
         // wait for necessary elements
@@ -75,7 +53,9 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
 
         await Apify.pushData({ ...detail, ...userResult });
     } else {
-        const heading = await page.$('[data-block-id=heading] h1');
+        const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
+        await page.waitForSelector(countSelector, { timeout: 60000 });
+        const heading = await page.$(countSelector);
         const headingText = heading ? (await getAttribute(heading, 'textContent')).trim() : 'No heading found.';
         log.info(headingText);
 
@@ -122,7 +102,8 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
             });
         }
 
-        const items = await page.$$('.sr_property_block.sr_item:not(.soldout_property)');
+        // eslint-disable-next-line max-len
+        const items = await page.$$('.sr_property_block.sr_item:not(.soldout_property), [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"]');
         if (items.length === 0) {
             log.info('Found no result. Skipping..');
             return;
@@ -154,7 +135,8 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
             const prItem = await page.$('.bui-pagination__info');
             const pageRange = (await getAttribute(prItem, 'textContent')).match(/\d+/g);
             const firstItem = parseInt(pageRange && pageRange[0] ? pageRange[0] : '1', 10);
-            const links = await page.$$('.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link');
+            // eslint-disable-next-line max-len
+            const links = await page.$$('.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link, [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"] a');
 
             for (let iLink = 0; iLink < links.length; iLink++) {
                 const link = links[iLink];

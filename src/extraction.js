@@ -174,7 +174,8 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
 
     // Extract listing data.
     const result = [];
-    const items = $('.sr_property_block.sr_item:not(.soldout_property)');
+    // eslint-disable-next-line max-len
+    const items = $('.sr_property_block.sr_item:not(.soldout_property), [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"]');
     let started = 0;
     let finished = 0;
 

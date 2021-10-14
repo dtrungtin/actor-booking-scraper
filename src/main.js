@@ -1,8 +1,6 @@
 const Apify = require('apify');
-
 const { USER_AGENT } = require('./consts');
 const { validateInput, cleanInput, evalExtendOutputFn } = require('./input');
-const { getWorkingBrowser } = require('./util.js');
 const { prepareRequestSources } = require('./start-urls');
 const ErrorSnapshotter = require('./error-snapshotter');
 const handlePageFunctionExtended = require('./handle-page-function');
@@ -17,12 +15,10 @@ Apify.main(async () => {
 
     const {
         startUrls,
-        minScore,
         sortBy = 'bayesian_review_score',
         maxPages,
         proxyConfig = { useApifyProxy: true },
         enableAssets = false,
-        testProxy,
     } = input;
 
     const errorSnapshotter = new ErrorSnapshotter();
@@ -36,7 +32,7 @@ Apify.main(async () => {
 
     const requestQueue = await Apify.openRequestQueue();
 
-    const { startUrl, requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
+    const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
 
     const requestList = await Apify.openRequestList('LIST', requestSources);
 
@@ -51,53 +47,31 @@ Apify.main(async () => {
         requestQueue,
         handlePageTimeoutSecs: 120,
         proxyConfiguration,
-        useSessionPool: true,
-        launchPuppeteerOptions: {
-            // @ts-ignore
-            ignoreHTTPSErrors: true,
+        launchContext: {
             useChrome: Apify.isAtHome(),
-            args: [
-                '--ignore-certificate-errors',
-            ],
-            stealth: true,
-            stealthOptions: {
-                addPlugins: false,
-                emulateWindowFrame: false,
-                emulateWebGL: false,
-                emulateConsoleDebug: false,
-                addLanguage: false,
-                hideWebDriver: true,
-                hackPermissions: false,
-                mockChrome: false,
-                mockChromeInIframe: false,
-                mockDeviceMemory: false,
+            launchOptions: {
+                args: [
+                    '--ignore-certificate-errors',
+                ],
+                ignoreHTTPSErrors: true,
             },
+            stealth: true,
             userAgent: USER_AGENT,
         },
-        launchPuppeteerFunction: async (options) => {
-            if (!testProxy) {
-                return Apify.launchPuppeteer({
-                    ...options,
-                });
-            }
-            return getWorkingBrowser(startUrl, input, options);
-        },
-
-        handlePageFunction: async (pageContext) => {
+        useSessionPool: true,
+        handlePageFunction: async (context) => {
             await errorSnapshotter.tryWithSnapshot(
-                pageContext.page,
-                async () => handlePageFunctionExtended({ ...pageContext, ...globalContext }),
+                context.page,
+                async () => handlePageFunctionExtended({ ...context, ...globalContext }),
             );
         },
-
         handleFailedRequestFunction: async ({ request }) => {
             log.info(`Request ${request.url} failed too many times`);
             await Apify.pushData({
                 '#debug': Apify.utils.createRequestDebugInfo(request),
             });
         },
-
-        gotoFunction: async ({ page, request }) => {
+        preNavigationHooks: [async ({ page }) => {
             if (!enableAssets) {
                 await Apify.utils.puppeteer.blockRequests(page);
             }
@@ -108,10 +82,10 @@ Apify.main(async () => {
                 width: 1024 + Math.floor(Math.random() * 100),
                 height: 768 + Math.floor(Math.random() * 100),
             });
-
-            return page.goto(request.url, { timeout: 200000 });
-        },
+        }],
     });
 
+    log.info('Starting the crawl.');
     await crawler.run();
+    log.info('Crawl finished.');
 });
