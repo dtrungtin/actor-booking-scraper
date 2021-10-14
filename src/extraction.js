@@ -216,7 +216,8 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             const loc = (buiLink1.length > 0 ? buiLink1 : buiLink2).attr('data-coords');
             const latlng = loc ? loc.split(',') : null;
             const image = jThis.find('.sr_item_photo_link.sr_hotel_preview_track').attr('style');
-            const url = origin + jThis.find('.hotel_name_link').attr('href').replace(/\n/g, '');
+            const hotelLink = jThis.find('.hotel_name_link').attr('href');
+            const url = origin + (hotelLink ? hotelLink.replace(/\n/g, '') : jThis.find('a').attr('href').replace(/\n/g, ''));
             const item = {
                 url: url.split('?')[0],
                 name: $(sr).find('.sr-hotel__name').text().trim(),

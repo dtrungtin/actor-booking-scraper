@@ -31,13 +31,9 @@ Apify.main(async () => {
     });
 
     const requestQueue = await Apify.openRequestQueue();
-
     const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
-
     const requestList = await Apify.openRequestList('LIST', requestSources);
-
     const proxyConfiguration = (await Apify.createProxyConfiguration(proxyConfig)) || undefined;
-
     const globalContext = {
         requestQueue, startUrls, input, extendOutputFunction, sortBy, maxPages, state,
     };
@@ -45,7 +41,7 @@ Apify.main(async () => {
     const crawler = new Apify.PuppeteerCrawler({
         requestList,
         requestQueue,
-        handlePageTimeoutSecs: 120,
+        handlePageTimeoutSecs: enableAssets ? 60 : 30,
         proxyConfiguration,
         launchContext: {
             useChrome: Apify.isAtHome(),
