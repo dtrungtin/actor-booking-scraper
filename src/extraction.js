@@ -185,12 +185,14 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
         const n1 = jThis.find('.score_from_number_of_reviews').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
         const n2 = jThis.find('.review-score-widget__subtext').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
         const n3 = jThis.find('.bui-review-score__text').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
-        const nReviews = n1 || n2 || n3;
+        const n4 = jThis.find('[data-testid=review-score] > div:nth-child(2) > div:nth-child(2)').text();
+        const nReviews = n1 || n2 || n3 || n4;
 
         ++started;
         sr.scrollIntoView();
         const getPrice = function () {
-            return $(sr).find('.bui-price-display__value, :not(strong).site_price, .totalPrice, strong.price');
+            // eslint-disable-next-line max-len
+            return $(sr).find('.bui-price-display__value, :not(strong).site_price, .totalPrice, strong.price, [data-testid=price-and-discounted-price] > span');
         };
 
         // When the price is ready, extract data.
@@ -200,16 +202,17 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             /* eslint-enable */
             const occ = jThis.find('.sr_max_occupancy i, .c-occupancy-icons__adults i').length;
             const rl1 = jThis.find('.room_link span').eq(0).contents();
-            const rl2 = jThis.find('.room_link strong');
+            // eslint-disable-next-line max-len
+            const rl2 = jThis.find('.room_link strong').length > 0 ? jThis.find('.room_link strong') : jThis.find('[data-testid=recommended-units] [role=link]');
             const prtxt = getPrice().eq(0).text().trim()
                 .replace(/,|\s/g, '');
             const pr = prtxt.match(/\d+/);
             const pc = prtxt.match(/[^\d]+/);
             const taxAndFeeText = jThis.find('.prd-taxes-and-fees-under-price').eq(0).text().trim();
             const taxAndFee = taxAndFeeText.match(/\d+/);
-            const rat = $(sr).attr('data-score');
+            const rat = $(sr).attr('data-score') || jThis.find('[data-testid=review-score] > div:first-child').text();
             const starAttr = jThis.find('.bui-rating').attr('aria-label');
-            const stars = starAttr ? starAttr.match(/\d/) : null;
+            const stars = starAttr ? starAttr.match(/\d/) : jThis.find('[data-testid=rating-stars] span').length;
             const buiLink1 = jThis.find('.bui-link--primary');
             const buiLink2 = jThis.find('a.district_link, .bui-link').eq(0);
             const address = (buiLink2.length > 0 ? buiLink2 : buiLink1.contents().eq(0)).text().trim().split('\n')[0].trim();
@@ -217,10 +220,11 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             const latlng = loc ? loc.split(',') : null;
             const image = jThis.find('.sr_item_photo_link.sr_hotel_preview_track').attr('style');
             const hotelLink = jThis.find('.hotel_name_link').attr('href');
-            const url = origin + (hotelLink ? hotelLink.replace(/\n/g, '') : jThis.find('a').attr('href').replace(/\n/g, ''));
+            let url = hotelLink ? hotelLink.replace(/\n/g, '') : jThis.find('a').attr('href').replace(/\n/g, '');
+            url = url.includes(origin) ? url : `${origin}${url}`;
             const item = {
                 url: url.split('?')[0],
-                name: $(sr).find('.sr-hotel__name').text().trim(),
+                name: $(sr).find('.sr-hotel__name, [data-testid=title]').text().trim(),
                 rating: rat ? parseFloat(rat.replace(',', '.')) : null,
                 reviews: nReviews ? parseInt(nReviews[0], 10) : null,
                 stars: stars ? parseInt(stars[0], 10) : null,
@@ -228,7 +232,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 currency: pc ? pc[0].trim() : null,
                 roomType: rl2.length > 0 ? rl2.text().trim() : rl1.eq(0).text().trim(),
                 persons: occ || null,
-                address,
+                address: address || jThis.find('[data-testid=address]').text(),
                 location: latlng ? { lat: latlng[0], lng: latlng[1] } : null,
                 image,
             };

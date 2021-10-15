@@ -51,7 +51,6 @@ Apify.main(async () => {
                 ],
                 ignoreHTTPSErrors: true,
             },
-            stealth: true,
             userAgent: USER_AGENT,
         },
         useSessionPool: true,
