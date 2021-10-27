@@ -136,7 +136,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
             const pageRange = (await getAttribute(prItem, 'textContent')).match(/\d+/g);
             const firstItem = parseInt(pageRange && pageRange[0] ? pageRange[0] : '1', 10);
             // eslint-disable-next-line max-len
-            const links = await page.$$('.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link, [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"] a');
+            const links = await page.$$('.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link, [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"] a[data-testid="title-link"]');
 
             for (let iLink = 0; iLink < links.length; iLink++) {
                 const link = links[iLink];
