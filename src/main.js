@@ -55,6 +55,13 @@ Apify.main(async () => {
         },
         useSessionPool: true,
         handlePageFunction: async (context) => {
+            const loadedUrl = context.page.url();
+            if (loadedUrl.length <= 62) {
+                context.session.retire();
+                context.crawler.browserPool.retireBrowserByPage(context.page);
+                throw new Error(`The loaded url (${loadedUrl}) seems wrong! Retry...`);
+            }
+
             await errorSnapshotter.tryWithSnapshot(
                 context.page,
                 async () => handlePageFunctionExtended({ ...context, ...globalContext }),
