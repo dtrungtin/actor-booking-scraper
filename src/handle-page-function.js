@@ -14,7 +14,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
 
     if (request.userData.label === 'detail') { // Extract data from the hotel detail page
         // wait for necessary elements
-        try { await page.waitForSelector('.hprt-occupancy-occupancy-info'); } catch (e) { log.info('occupancy info not found'); }
+        try { await page.waitForSelector('.bicon-occupancy'); } catch (e) { log.info('occupancy info not found'); }
 
         const ldElem = await page.$('script[type="application/ld+json"]');
         const ld = JSON.parse(await getAttribute(ldElem, 'textContent'));
@@ -74,7 +74,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         }
 
         // If it's aprropriate, enqueue all pagination pages
-        if (enqueuingReady && (!maxPages || input.useFilters || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
+        if (enqueuingReady && (!maxPages || maxPages > 1 || input.useFilters || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
             if (input.useFilters) {
                 await enqueueAllPages(page, requestQueue, input, 0);
             } else if (!maxPages || maxPages > 1) {
