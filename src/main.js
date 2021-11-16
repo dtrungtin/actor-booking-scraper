@@ -17,6 +17,7 @@ Apify.main(async () => {
         startUrls,
         sortBy = 'bayesian_review_score',
         maxPages,
+        minScore,
         proxyConfig = { useApifyProxy: true },
         enableAssets = false,
     } = input;
@@ -31,7 +32,7 @@ Apify.main(async () => {
     });
 
     const requestQueue = await Apify.openRequestQueue();
-    const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
+    const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy, minScore });
     const requestList = await Apify.openRequestList('LIST', requestSources);
     const proxyConfiguration = (await Apify.createProxyConfiguration(proxyConfig)) || undefined;
     const globalContext = {
