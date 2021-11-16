@@ -121,7 +121,7 @@ avoid URL parameter clashing.
 In case the startUrl is a hotel detail page, it will be scraped. In case it is a hotel list page, the result
 will depend on the `simple` attribute. If it's `true`, the page will be scraped, otherwise all the links to
 detail pages will be added to the queue and scraped afterwards.
-The `startUrls` attribute should cotain an array of URLs as follows:
+The `startUrls` attribute should contain an array of URLs as follows:
 
 ```javascript
 {
