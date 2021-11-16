@@ -117,9 +117,10 @@
             "editor": "textfield"
         },
         "minScore": {
-            "title": "Minimum rating",
+            "title": "Minimum rating (0-10)",
             "type": "string",
             "description": "Minimum hotel rating",
+            "default": "8.4",
             "editor": "textfield",
             "sectionCaption": "Select rating and price range"
         },

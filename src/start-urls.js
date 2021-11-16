@@ -38,7 +38,7 @@ module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sort
         // Create startURL based on provided INPUT.
         const dType = input.destType || 'city';
         const query = encodeURIComponent(input.search);
-        const minScoreParam = minScore ? `&review_score=${parseInt(minScore, 10) * 10}` : '';
+        const minScoreParam = minScore ? `&review_score=${parseFloat(minScore) * 10}` : '';
         startUrl = `https://www.booking.com/searchresults.html?dest_type=${dType}&ss=${query}&order=${sortBy}${minScoreParam}`;
         startUrl = addUrlParameters(startUrl, input);
 
