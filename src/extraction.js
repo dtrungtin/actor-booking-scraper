@@ -212,7 +212,8 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             const taxAndFee = taxAndFeeText.match(/\d+/);
             const rat = $(sr).attr('data-score') || jThis.find('[data-testid=review-score] > div:first-child').text();
             const starAttr = jThis.find('.bui-rating').attr('aria-label');
-            const stars = starAttr ? starAttr.match(/\d/) : jThis.find('[data-testid=rating-stars] span').length;
+            const stars = starAttr ? starAttr.match(/\d/) : [jThis.find('[data-testid=rating-stars] span').length];
+            const starsCount = stars ? parseInt(stars[0], 10) : null;
             const buiLink1 = jThis.find('.bui-link--primary');
             const buiLink2 = jThis.find('a.district_link, .bui-link').eq(0);
             const address = (buiLink2.length > 0 ? buiLink2 : buiLink1.contents().eq(0)).text().trim().split('\n')[0].trim();
@@ -227,7 +228,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 name: $(sr).find('.sr-hotel__name, [data-testid=title]').text().trim(),
                 rating: rat ? parseFloat(rat.replace(',', '.')) : null,
                 reviews: nReviews ? parseInt(nReviews[0], 10) : null,
-                stars: stars ? parseInt(stars[0], 10) : null,
+                stars: starsCount !== 0 ? starsCount : null,
                 price: pr ? (parseFloat(pr[0]) + (taxAndFee ? parseFloat(taxAndFee[0]) : 0)) : null,
                 currency: pc ? pc[0].trim() : null,
                 roomType: rl2.length > 0 ? rl2.text().trim() : rl1.eq(0).text().trim(),
