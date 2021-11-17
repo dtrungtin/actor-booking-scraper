@@ -132,7 +132,7 @@ The `startUrls` attribute should contain an array of URLs as follows:
         ...
     ],
     "simple": false,
-    "minScore": 8.4,
+    "minScore": "8.4",
     ...
 }
 ```
@@ -145,7 +145,7 @@ In case of using the `simple` INPUT attribute, an example output for a single ho
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
   "name": "Centrum Apartments Old Town",
-  "minScore": "10",
+  "rating": 10,
   "reviews": 7,
   "stars": 4,
   "price": 86,
@@ -153,10 +153,6 @@ In case of using the `simple` INPUT attribute, an example output for a single ho
   "roomType": "Deluxe Three-Bedroom Apartment with Terrace",
   "persons": 4,
   "address": "Prague 01, Prague",
-  "location": {
-    "lat": "14.4199419021606",
-    "lng": "50.0903216331068"
-  }
 }
 ```
 
@@ -169,8 +165,8 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
   "name": "Centrum Apartments Old Town",
   "type": "Apartment",
   "description": "Situated in the centre of Prague in a historical building near the Pařížská street, 500 metres from the Old Town Square, the Pragueaparts Old town E offers...",
-  "stars": "4",
-  "minScore": "10",
+  "stars": 4,
+  "rating": 10,
   "reviews": 7,
   "breakfast": null,
   "checkInFrom": "15:00",
