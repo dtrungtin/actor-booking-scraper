@@ -229,8 +229,20 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 address: jThis.find('[data-testid=address]').text(),
                 image,
             };
-            if (!minScore || (item.rating && item.rating >= minScore)) { result.push(item); }
-            if (++finished >= started) { resolve(result); }
+
+            const DEFAULT_MIN_RATING = 8.4;
+
+            // if no rating is scraped, consider item's rating valid (set it to max rating + 1)
+            const MAX_RATING = 10;
+            const rating = item.rating ? item.rating : MAX_RATING + 1;
+
+            if ((minScore && rating >= minScore) || (!minScore && rating >= DEFAULT_MIN_RATING)) {
+                result.push(item);
+            }
+
+            if (++finished >= started) {
+                resolve(result);
+            }
         });
     });
 });
