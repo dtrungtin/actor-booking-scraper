@@ -17,7 +17,6 @@ Apify.main(async () => {
         startUrls,
         sortBy = 'bayesian_review_score',
         maxPages,
-        minScore,
         proxyConfig = { useApifyProxy: true },
         enableAssets = false,
     } = input;

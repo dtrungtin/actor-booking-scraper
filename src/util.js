@@ -2,7 +2,7 @@ const Apify = require('apify');
 const moment = require('moment');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 
-const { PRICE_LABELS, MAX_OFFSET } = require('./consts');
+const { PRICE_LABELS, MAX_OFFSET, DEFAULT_MIN_SCORE } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -121,8 +121,6 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
         }
     }
 
-    console.log(url);
-
     return url;
 };
 
@@ -160,7 +158,7 @@ const addUrlParameters = (url, input) => {
         { isSet: adults, name: 'group_adults', value: adults },
         { isSet: children, name: 'group_children', value: children },
         { isSet: rooms, name: 'no_rooms', value: rooms },
-        { isSet: minScore, name: 'review_score', value: parseFloat(minScore) * 10 },
+        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
     ];
 
     const minMaxPriceIndex = PRICE_LABELS.indexOf(minMaxPrice);
@@ -262,7 +260,6 @@ module.exports.setPropertyType = async (page, input, requestQueue) => {
 };
 
 module.exports.isMinMaxPriceSet = async (page, input) => {
-    log.info(`Page is: ${page}`);
     if (input.minMaxPrice !== 'none') {
         const filterOptions = await page.$$('.filteroptions');
         if (filterOptions && filterOptions.length !== 0) {

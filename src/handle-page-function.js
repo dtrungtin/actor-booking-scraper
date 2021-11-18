@@ -113,7 +113,6 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
             log.info('extracting data...');
             await Apify.utils.puppeteer.injectJQuery(page);
             const result = await page.evaluate(listPageFunction, input);
-            log.info(`Found ${result.length} results`);
 
             if (result.length > 0) {
                 const toBeAdded = [];
@@ -124,6 +123,9 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
                         state.crawled[item.name] = true;
                     }
                 }
+
+                log.info(`Found ${toBeAdded.length} new results out of ${result.length} results.`);
+
                 if (toBeAdded.length > 0) {
                     await Apify.pushData(toBeAdded);
                 }
