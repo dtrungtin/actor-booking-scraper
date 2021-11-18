@@ -233,7 +233,7 @@ The average consumption is **1 Compute unit for 75 actor pages** scraped
   `checkOut` INPUT attributes (Booking.com only shows room info for specific dates).
 
 * Booking.com sometimes returns some suggested hotels that are outside of the expected city/region as a recommendation.
-  The ator will return all of them in the crawling results so you may recognize more results than your search.
+  The actor will return all of them in the crawling results so you may recognize more results than your search.
 
 
 ## Changelog
