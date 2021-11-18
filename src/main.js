@@ -32,7 +32,7 @@ Apify.main(async () => {
     });
 
     const requestQueue = await Apify.openRequestQueue();
-    const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy, minScore });
+    const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
     const requestList = await Apify.openRequestList('LIST', requestSources);
     const proxyConfiguration = (await Apify.createProxyConfiguration(proxyConfig)) || undefined;
     const globalContext = {

@@ -4,7 +4,7 @@ const { addUrlParameters } = require('./util');
 
 const { downloadListOfUrls, log } = Apify.utils;
 
-module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sortBy, minScore }) => {
+module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sortBy }) => {
     let startUrl;
     const requestSources = [];
     if (startUrls) {
@@ -38,8 +38,7 @@ module.exports.prepareRequestSources = async ({ startUrls, input, maxPages, sort
         // Create startURL based on provided INPUT.
         const dType = input.destType || 'city';
         const query = encodeURIComponent(input.search);
-        const minScoreParam = minScore ? `&review_score=${parseFloat(minScore) * 10}` : '';
-        startUrl = `https://www.booking.com/searchresults.html?dest_type=${dType}&ss=${query}&order=${sortBy}${minScoreParam}`;
+        startUrl = `https://www.booking.com/searchresults.html?dest_type=${dType}&ss=${query}&order=${sortBy}`;
         startUrl = addUrlParameters(startUrl, input);
 
         // Enqueue all pagination pages.
