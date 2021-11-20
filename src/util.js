@@ -155,13 +155,11 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
         { isSet: adults, name: 'group_adults', value: adults },
         { isSet: children, name: 'group_children', value: children },
         { isSet: rooms, name: 'no_rooms', value: rooms },
-        { isSet: checkIn && checkOut, name: 'checkin', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
-        { isSet: checkIn && checkOut, name: 'checkout', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
         { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
     ];
 
     addMinMaxPriceParameter(minMaxPrice, queryParameters);
-    addCheckInCheckOutParameters(checkIn, checkOut);
+    addCheckInCheckOutParameters(checkIn, checkOut, queryParameters);
 
     queryParameters.forEach((parameter) => {
         const { isSet, name, value } = parameter;
