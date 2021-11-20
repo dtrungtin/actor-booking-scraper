@@ -234,7 +234,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
 
             // if no rating is scraped, consider item's rating valid (set it to max rating + 1)
             const MAX_RATING = 10;
-            const rating = item.rating ? item.rating : MAX_RATING + 1;
+            const rating = item.rating || MAX_RATING + 1;
 
             if ((minScore && rating >= minScore) || (!minScore && rating >= DEFAULT_MIN_RATING)) {
                 result.push(item);
