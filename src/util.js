@@ -124,6 +124,55 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
     return url;
 };
 
+const addMinMaxPriceParameter = (minMaxPrice, queryParameters) => {
+    const minMaxPriceIndex = PRICE_LABELS.indexOf(minMaxPrice);
+
+    if (minMaxPriceIndex !== -1) {
+        queryParameters.push({ isSet: minMaxPrice, name: 'pri', value: minMaxPriceIndex + 1 });
+    }
+};
+
+const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
+    if (checkIn && checkOut) {
+        const ci = checkIn.split(/-|\//);
+        const co = checkOut.split(/-|\//);
+
+        queryParameters.push({ isSet: true, name: 'checkin', value: `${ci[0]}-${ci[1]}-${ci[2]}` });
+        queryParameters.push({ isSet: true, name: 'checkout', value: `${co[0]}-${co[1]}-${co[2]}` });
+    }
+};
+
+const addUrlParametersForHotelListingUrl = (url, input) => {
+    const { currency, language, adults, children, rooms, minScore, minMaxPrice, checkIn, checkOut } = input;
+
+    const extendedUrl = new URL(url);
+
+    const queryParameters = [
+        { isSet: currency, name: 'selected_currency', value: currency.toUpperCase() },
+        { isSet: currency, name: 'changed_currency', value: 1 },
+        { isSet: currency, name: 'top_currency', value: 1 },
+        { isSet: language, name: 'lang', value: language.replace('_', '-') },
+        { isSet: adults, name: 'group_adults', value: adults },
+        { isSet: children, name: 'group_children', value: children },
+        { isSet: rooms, name: 'no_rooms', value: rooms },
+        { isSet: checkIn && checkOut, name: 'checkin', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
+        { isSet: checkIn && checkOut, name: 'checkout', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
+        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
+    ];
+
+    addMinMaxPriceParameter(minMaxPrice, queryParameters);
+    addCheckInCheckOutParameters(checkIn, checkOut);
+
+    queryParameters.forEach((parameter) => {
+        const { isSet, name, value } = parameter;
+        if (isSet && !extendedUrl.searchParams.has(name)) {
+            extendedUrl.searchParams.set(name, value);
+        }
+    });
+
+    return extendedUrl.toString();
+};
+
 /**
  * Adds URL parameters to a Booking.com URL (timespan, language and currency).
  * @param {string} url - Booking.com URL to add the parameters to.
@@ -134,56 +183,10 @@ const addUrlParameters = (url, input) => {
         return addUrlParametersForHotelDetailUrl(url, input);
     }
 
-    if (url.indexOf('?') < 0) { url += '?'; }
-    if (input.checkIn && input.checkOut) {
-        const ci = input.checkIn.split(/-|\//);
-        const co = input.checkOut.split(/-|\//);
-
-        const coAdd = `&checkout=${co[0]}-${co[1]}-${co[2]}`;
-        const ciAdd = `&checkin=${ci[0]}-${ci[1]}-${ci[2]}`;
-
-        if (!url.includes(ciAdd)) { url += ciAdd; }
-        if (!url.includes(coAdd)) { url += coAdd; }
-    }
-
-    const extendedUrl = { url };
-
-    const { currency, language, adults, children, rooms, minScore, minMaxPrice } = input;
-
-    const queryParameters = [
-        { isSet: currency, name: 'selected_currency', value: currency.toUpperCase() },
-        { isSet: currency, name: 'changed_currency', value: 1 },
-        { isSet: currency, name: 'top_currency', value: 1 },
-        { isSet: language, name: 'lang', value: language.replace('_', '-') },
-        { isSet: adults, name: 'group_adults', value: adults },
-        { isSet: children, name: 'group_children', value: children },
-        { isSet: rooms, name: 'no_rooms', value: rooms },
-        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
-    ];
-
-    const minMaxPriceIndex = PRICE_LABELS.indexOf(minMaxPrice);
-    if (minMaxPriceIndex !== -1) {
-        queryParameters.push({ isSet: minMaxPrice, name: 'nflt=pri', value: minMaxPriceIndex + 1 });
-    }
-
-    queryParameters.forEach((parameter) => {
-        const { isSet, name, value } = parameter;
-        addQueryParameter(isSet, name, value, extendedUrl);
-    });
-
-    return extendedUrl.url.replace('?&', '?');
+    return addUrlParametersForHotelListingUrl(url, input);
 };
 
 module.exports.addUrlParameters = addUrlParameters;
-
-function addQueryParameter(parameterSet, parameterName, parameterValue, extendedUrl) {
-    if (parameterSet) {
-        const parameter = `&${parameterName}=${parameterValue}`;
-        if (!extendedUrl.url.includes(parameter)) {
-            extendedUrl.url += parameter;
-        }
-    }
-}
 
 /**
  * Creates a function to make sure the URL contains all necessary attributes from INPUT.
@@ -272,7 +275,7 @@ module.exports.isMinMaxPriceSet = async (page, input) => {
     return true;
 };
 
-module.exports.setMinMaxPrice = async (page, input, requestQueue) => {
+module.exports.setMinMaxPrice = async (page, input, requestQueue, crawler) => {
     log.info('enqueuing min-max price page...');
     const urlMod = fixUrl('&', input);
     const fPrices = await (await page.$$('.filteroptions'))[0].$$('.filterelement');
@@ -282,7 +285,7 @@ module.exports.setMinMaxPrice = async (page, input, requestQueue) => {
     const fLabel = fText.replace(/[^\d-+]/g, '');
     if (!PRICE_LABELS.includes(fLabel)) {
         log.error(`Cannot find price range filter: ${input.minMaxPrice}`);
-        process.exit(1);
+        crawler.autoscaledPool.abort();
     }
 
     log.info(`Using filter: ${fText}`);

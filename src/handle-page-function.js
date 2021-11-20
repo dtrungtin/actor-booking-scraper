@@ -8,7 +8,7 @@ const {
 
 const { log } = Apify.utils;
 
-module.exports = async ({ page, request, session, requestQueue, startUrls, input,
+module.exports = async ({ page, request, session, crawler, requestQueue, startUrls, input,
     extendOutputFunction, sortBy, maxPages, state }) => {
     log.info(`open url(${request.userData.label}): ${page.url()}`);
 
@@ -89,7 +89,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
 
         // If min-max price is enabled, enqueue necessary page.
         if (settingMinMaxPrice && !settingPropertyType) {
-            await setMinMaxPrice(page, input, requestQueue);
+            await setMinMaxPrice(page, input, requestQueue, crawler);
         }
 
         // If filtering is enabled, enqueue necessary pages.
