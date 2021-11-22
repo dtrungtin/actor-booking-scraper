@@ -2,6 +2,8 @@ const Apify = require('apify');
 const moment = require('moment');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 
+const { PRICE_LABELS, MAX_OFFSET, DEFAULT_MIN_SCORE } = require('./consts');
+
 const { log } = Apify.utils;
 
 /**
@@ -119,9 +121,54 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
         }
     }
 
-    console.log(url);
-
     return url;
+};
+
+const addMinMaxPriceParameter = (minMaxPrice, queryParameters) => {
+    const minMaxPriceIndex = PRICE_LABELS.indexOf(minMaxPrice);
+
+    if (minMaxPriceIndex !== -1) {
+        queryParameters.push({ isSet: minMaxPrice, name: 'pri', value: minMaxPriceIndex + 1 });
+    }
+};
+
+const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
+    if (checkIn && checkOut) {
+        const ci = checkIn.split(/-|\//);
+        const co = checkOut.split(/-|\//);
+
+        queryParameters.push({ isSet: true, name: 'checkin', value: `${ci[0]}-${ci[1]}-${ci[2]}` });
+        queryParameters.push({ isSet: true, name: 'checkout', value: `${co[0]}-${co[1]}-${co[2]}` });
+    }
+};
+
+const addUrlParametersForHotelListingUrl = (url, input) => {
+    const { currency, language, adults, children, rooms, minScore, minMaxPrice, checkIn, checkOut } = input;
+
+    const extendedUrl = new URL(url);
+
+    const queryParameters = [
+        { isSet: currency, name: 'selected_currency', value: currency.toUpperCase() },
+        { isSet: currency, name: 'changed_currency', value: 1 },
+        { isSet: currency, name: 'top_currency', value: 1 },
+        { isSet: language, name: 'lang', value: language.replace('_', '-') },
+        { isSet: adults, name: 'group_adults', value: adults },
+        { isSet: children, name: 'group_children', value: children },
+        { isSet: rooms, name: 'no_rooms', value: rooms },
+        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
+    ];
+
+    addMinMaxPriceParameter(minMaxPrice, queryParameters);
+    addCheckInCheckOutParameters(checkIn, checkOut, queryParameters);
+
+    queryParameters.forEach((parameter) => {
+        const { isSet, name, value } = parameter;
+        if (isSet && !extendedUrl.searchParams.has(name)) {
+            extendedUrl.searchParams.set(name, value);
+        }
+    });
+
+    return extendedUrl.toString();
 };
 
 /**
@@ -134,40 +181,7 @@ const addUrlParameters = (url, input) => {
         return addUrlParametersForHotelDetailUrl(url, input);
     }
 
-    if (url.indexOf('?') < 0) { url += '?'; }
-    if (input.checkIn && input.checkOut) {
-        const ci = input.checkIn.split(/-|\//);
-        const co = input.checkOut.split(/-|\//);
-
-        const coAdd = `&checkout=${co[0]}-${co[1]}-${co[2]}`;
-        const ciAdd = `&checkin=${ci[0]}-${ci[1]}-${ci[2]}`;
-
-        if (!url.includes(ciAdd)) { url += ciAdd; }
-        if (!url.includes(coAdd)) { url += coAdd; }
-    }
-
-    if (input.currency) {
-        const curAdd = `&selected_currency=${input.currency.toUpperCase()}&changed_currency=1&top_currency=1`;
-        if (!url.includes(curAdd)) { url += curAdd; }
-    }
-    if (input.language) {
-        const lng = input.language.replace('_', '-');
-        const lngAdd = `&lang=${lng}`;
-        if (!url.includes(lngAdd)) { url += lngAdd; }
-    }
-    if (input.adults) {
-        const adAdd = `&group_adults=${input.adults}`;
-        if (!url.includes(adAdd)) { url += adAdd; }
-    }
-    if (input.children) {
-        const cdAdd = `&group_children=${input.children}`;
-        if (!url.includes(cdAdd)) { url += cdAdd; }
-    }
-    if (input.rooms) {
-        const rmAdd = `&no_rooms=${input.rooms}`;
-        if (!url.includes(rmAdd)) { url += rmAdd; }
-    }
-    return url.replace('?&', '?');
+    return addUrlParametersForHotelListingUrl(url, input);
 };
 
 module.exports.addUrlParameters = addUrlParameters;
@@ -246,28 +260,30 @@ module.exports.setPropertyType = async (page, input, requestQueue) => {
     }
 };
 
-const pLabels = ['0-50', '50-100', '100-150', '150-200', '200+'];
 module.exports.isMinMaxPriceSet = async (page, input) => {
     if (input.minMaxPrice !== 'none') {
-        const fPrices = await (await page.$$('.filteroptions'))[0].$$('.filterelement');
-        const index = pLabels.indexOf(input.minMaxPrice);
-        const cls = await getAttribute(fPrices[index], 'className');
-        if (!cls.includes('active')) { return false; }
+        const filterOptions = await page.$$('.filteroptions');
+        if (filterOptions && filterOptions.length !== 0) {
+            const fPrices = await filterOptions[0].$$('.filterelement');
+            const index = PRICE_LABELS.indexOf(input.minMaxPrice);
+            const cls = await getAttribute(fPrices[index], 'className');
+            return cls.includes('active');
+        }
     }
     return true;
 };
 
-module.exports.setMinMaxPrice = async (page, input, requestQueue) => {
+module.exports.setMinMaxPrice = async (page, input, requestQueue, crawler) => {
     log.info('enqueuing min-max price page...');
     const urlMod = fixUrl('&', input);
     const fPrices = await (await page.$$('.filteroptions'))[0].$$('.filterelement');
-    const index = pLabels.indexOf(input.minMaxPrice);
+    const index = PRICE_LABELS.indexOf(input.minMaxPrice);
     const label = await (fPrices[index]).$('.filter_label');
     const fText = await getAttribute(label, 'textContent');
     const fLabel = fText.replace(/[^\d-+]/g, '');
-    if (!pLabels.includes(fLabel)) {
+    if (!PRICE_LABELS.includes(fLabel)) {
         log.error(`Cannot find price range filter: ${input.minMaxPrice}`);
-        process.exit(1);
+        crawler.autoscaledPool.abort();
     }
 
     log.info(`Using filter: ${fText}`);
@@ -351,11 +367,18 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
                 }
 
                 for (let i = 1; i < count; i++) {
-                    const newUrl = pageUrl.includes('offset=') ? pageUrl.replace(/offset=(\d+)/, `offset=${25 * i}`) : `${pageUrl}&offset=${25 * i}`;
-                    await requestQueue.addRequest({
-                        url: addUrlParameters(newUrl, input),
-                        userData: { label: 'page' },
-                    });
+                    const newOffset = 25 * i;
+                    if (newOffset <= MAX_OFFSET) {
+                        // enqueueing urls with greater offset results in scraping last page all over again infinitely
+                        // maximum offset is overestimated to ensure maximum number of items to be scraped
+                        const newUrl = pageUrl.includes('offset=')
+                            ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
+                            : `${pageUrl}&offset=${newOffset}`;
+                        await requestQueue.addRequest({
+                            url: addUrlParameters(newUrl, input),
+                            userData: { label: 'page' },
+                        });
+                    }
                 }
             }
         } catch (e) {

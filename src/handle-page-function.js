@@ -8,13 +8,13 @@ const {
 
 const { log } = Apify.utils;
 
-module.exports = async ({ page, request, session, requestQueue, startUrls, input,
+module.exports = async ({ page, request, session, crawler, requestQueue, startUrls, input,
     extendOutputFunction, sortBy, maxPages, state }) => {
     log.info(`open url(${request.userData.label}): ${page.url()}`);
 
     if (request.userData.label === 'detail') { // Extract data from the hotel detail page
         // wait for necessary elements
-        try { await page.waitForSelector('.hprt-occupancy-occupancy-info'); } catch (e) { log.info('occupancy info not found'); }
+        try { await page.waitForSelector('.bicon-occupancy'); } catch (e) { log.info('occupancy info not found'); }
 
         const ldElem = await page.$('script[type="application/ld+json"]');
         const ld = JSON.parse(await getAttribute(ldElem, 'textContent'));
@@ -74,7 +74,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         }
 
         // If it's aprropriate, enqueue all pagination pages
-        if (enqueuingReady && (!maxPages || input.useFilters || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
+        if (enqueuingReady && (!maxPages || maxPages > 1 || input.useFilters || input.minMaxPrice !== 'none' || input.propertyType !== 'none')) {
             if (input.useFilters) {
                 await enqueueAllPages(page, requestQueue, input, 0);
             } else if (!maxPages || maxPages > 1) {
@@ -89,7 +89,7 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
 
         // If min-max price is enabled, enqueue necessary page.
         if (settingMinMaxPrice && !settingPropertyType) {
-            await setMinMaxPrice(page, input, requestQueue);
+            await setMinMaxPrice(page, input, requestQueue, crawler);
         }
 
         // If filtering is enabled, enqueue necessary pages.
@@ -113,7 +113,6 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
             log.info('extracting data...');
             await Apify.utils.puppeteer.injectJQuery(page);
             const result = await page.evaluate(listPageFunction, input);
-            log.info(`Found ${result.length} results`);
 
             if (result.length > 0) {
                 const toBeAdded = [];
@@ -124,6 +123,9 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
                         state.crawled[item.name] = true;
                     }
                 }
+
+                log.info(`Found ${toBeAdded.length} new results out of ${result.length} results.`);
+
                 if (toBeAdded.length > 0) {
                     await Apify.pushData(toBeAdded);
                 }

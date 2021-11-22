@@ -1,55 +1,61 @@
 {
-    "title": "Booking scraper input",
+    "title": "Booking Scraper input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
         "search": {
-            "title": "Booking search query",
+            "title": "Enter your search query",
             "type": "string",
-            "description": "Query string to be searched on Booking.com",
+            "description": "Enter the text you want to search for on Booking.com.",
             "prefill": "New York",
             "editor": "textfield"
         },
         "maxPages": {
             "title": "Maximum pagination pages",
             "type": "integer",
-            "description": "Number of pagination pages to be crawled",
+            "description": "Set the maximum number of pages of results you want to crawl.",
             "maximum": 1000000,
             "prefill": 2
         },
         "simple": {
-            "title": "Extract only basic information (no detail)",
+            "title": "Extract only basic information",
             "type": "boolean",
-            "description": "The crawler will get only the data available on the list page and not go to the hotel detail page. ",
+            "description": "If you check this box, the scraper will only extract information from the list of results. If you leave it unchecked, the scraper will visit hotel pages and extract information from there as well.",
             "default": true
         },
         "useFilters": {
-            "title": "Circumvent 1000 results limitation (uses criteria filters, slower)",
+            "title": "Circumvent 1,000 result limitation",
             "type": "boolean",
-            "description": "The crawler will enqueue all the different criteria filtered pages, this will overcome the 1000 results limit, but the scrape will take significantly longer.",
+            "description": "Booking only displays a maximum of 1,000 results. Checking this box will overcome this limitation by using criteria filters to enqueue pages, but scraping will take significantly longer.",
             "default": false
         },
         "startUrls": {
             "title": "Start URL",
             "type": "array",
-            "description": "URLs to start with instead of search query. It is better to use a simple URL and filter other options in filters here.",
+            "description": "Start scraping from specific URLs instead of search query. It's better to use a simple URL and filter other options in filters.",
             "editor": "requestListSources",
-            "sectionCaption": "Use a direct start URL instead of the search term"
+            "sectionCaption": "Use a direct start URL instead of search query"
         },
         "destType": {
             "title": "Destination type",
             "type": "string",
             "editor": "select",
-            "description": "Type of the destination",
+            "description": "Select type of destination",
             "default": "city",
-            "enum": ["city", "region"],
-            "enumTitles": ["City", "Region"],
-            "sectionCaption": "Select filters for your search (destination type, property type, sorting, rating, currency, language)"
+            "enum": [
+                "city",
+                "region"
+            ],
+            "enumTitles": [
+                "City",
+                "Region"
+            ],
+            "sectionCaption": "Select filters for your search (destination type, property type, sorting)"
         },
         "propertyType": {
             "title": "Property type",
             "type": "string",
-            "description": "Property type filter",
+            "description": "Filter by property type",
             "default": "none",
             "enum": [
                 "none",
@@ -72,7 +78,7 @@
             "title": "Order results by",
             "type": "string",
             "editor": "select",
-            "description": "Hotel attribute by which the results will be ordered",
+            "description": "Sort results by destination attributes, e.g. reviews, rating, or price.",
             "prefill": "distance_from_search",
             "enum": [
                 "upsort_bh",
@@ -95,16 +101,78 @@
                 "Top reviewed"
             ]
         },
-        "minScore": {
-            "title": "Minimum rating",
+        "checkIn": {
+            "title": "Check-in date (yyyy-mm-dd)",
             "type": "string",
-            "description": "Minimum rating of a hotel",
+            "description": "Check-in date",
+            "default": "",
+            "editor": "textfield",
+            "sectionCaption": "Select dates (necessary if you want to get prices and info about rooms)"
+        },
+        "checkOut": {
+            "title": "Check-out date (yyyy-mm-dd)",
+            "type": "string",
+            "description": "Check-out date",
+            "default": "",
             "editor": "textfield"
         },
+        "minScore": {
+            "title": "Minimum rating (0-10)",
+            "type": "string",
+            "description": "Minimum hotel rating",
+            "default": "8.4",
+            "editor": "textfield",
+            "sectionCaption": "Select rating and price range"
+        },
+        "minMaxPrice": {
+            "title": "Price range",
+            "type": "string",
+            "description": "Minimum-maximum price range",
+            "default": "none",
+            "enum": [
+                "none",
+                "0-50",
+                "50-100",
+                "100-150",
+                "150-200",
+                "200+"
+            ],
+            "enumTitles": [
+                "none",
+                "0 - € 50",
+                "€ 50 - € 100",
+                "€ 100 - € 150",
+                "€ 150 - € 200",
+                "€ 200 +"
+            ]
+        },
+        "rooms": {
+            "sectionCaption": "Select number of rooms and people",
+            "title": "Number of rooms",
+            "type": "integer",
+            "description": "Number of rooms for the search",
+            "default": 1,
+            "maximum": 50
+        },
+        "adults": {
+            "title": "Number of adults",
+            "type": "integer",
+            "description": "Number of adults for the search",
+            "default": 2,
+            "maximum": 50
+        },
+        "children": {
+            "title": "Number of children",
+            "type": "integer",
+            "description": "Number of children for the search",
+            "default": 0,
+            "maximum": 50
+        },
         "currency": {
+            "sectionCaption": "Select currency and language",
             "title": "Preferred currency",
             "type": "string",
-            "description": "Currency code to be set on the site",
+            "description": "Currency code to be set on the website",
             "prefill": "USD",
             "enum": [
                 "ARS",
@@ -214,7 +282,7 @@
         "language": {
             "title": "Language",
             "type": "string",
-            "description": "Language code to be set on the site",
+            "description": "Language code to be set on the website",
             "prefill": "en-us",
             "enum": [
                 "en-gb",
@@ -307,69 +375,20 @@
                 "Íslenska"
             ]
         },
-        "checkIn": {
-            "title": "Check-in date (yyyy-mm-dd)",
-            "type": "string",
-            "description": "Check-in date",
-            "default": "",
-            "editor": "textfield",
-            "sectionCaption": "Select filters connected with dates of the stay (neccessary if you want to get prices and info about rooms)"
-        },
-        "checkOut": {
-            "title": "Check-out date (yyyy-mm-dd)",
-            "type": "string",
-            "description": "Check-out date",
-            "default": "",
-            "editor": "textfield"
-        },
-        "rooms": {
-            "title": "Number of rooms",
-            "type": "integer",
-            "description": "Number of rooms for the search",
-            "default": 1,
-            "maximum": 50
-        },
-        "adults": {
-            "title": "Number of adults",
-            "type": "integer",
-            "description": "Number of adults for the search",
-            "default": 2,
-            "maximum": 50
-        },
-        "children": {
-            "title": "Number of children",
-            "type": "integer",
-            "description": "Number of children for the search",
-            "default": 0,
-            "maximum": 50
-        },
-        "minMaxPrice": {
-            "title": "Price range",
-            "type": "string",
-            "description": "Minimum-maximum price range",
-            "default": "none",
-            "enum": ["none", "0-50", "50-100", "100-150", "150-200", "200+"],
-            "enumTitles": [
-                "none",
-                "0 - € 50",
-                "€ 50 - € 100",
-                "€ 100 - € 150",
-                "€ 150 - € 200",
-                "€ 200 +"
-            ]
-        },
         "proxyConfig": {
-            "title": "Proxy Configuration",
+            "title": "Proxy configuration",
             "type": "object",
-            "description": "SHADER proxy group usually works the best if you have access to it.",
-            "prefill": { "useApifyProxy": true },
+            "description": "SHADER proxy group usually works best if you have access to it.",
+            "prefill": {
+                "useApifyProxy": true
+            },
             "editor": "proxy",
-            "sectionCaption": "Advanced options (proxy configuration, extend output)"
+            "sectionCaption": "Proxy Configuration"
         },
         "testProxy": {
             "title": "Test proxies (useful for proxy groups with many blocked IPs, experimental)",
             "type": "boolean",
-            "description": "Before starting crawling, the crawler will try to find a proxy that's not blocked by Booking.",
+            "description": "Before starting to scrape, the scraper will try to find a proxy that is not blocked by Booking.",
             "default": false
         },
         "extendOutputFunction": {
@@ -378,8 +397,11 @@
             "nullable": true,
             "description": "Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output",
             "prefill": "($) => { return {} }",
-            "editor": "javascript"
+            "editor": "javascript",
+            "sectionCaption": "Extend output"
         }
     },
-    "required": ["proxyConfig"]
+    "required": [
+        "proxyConfig"
+    ]
 }

@@ -121,7 +121,7 @@ avoid URL parameter clashing.
 In case the startUrl is a hotel detail page, it will be scraped. In case it is a hotel list page, the result
 will depend on the `simple` attribute. If it's `true`, the page will be scraped, otherwise all the links to
 detail pages will be added to the queue and scraped afterwards.
-The `startUrls` attribute should cotain an array of URLs as follows:
+The `startUrls` attribute should contain an array of URLs as follows:
 
 ```javascript
 {
@@ -132,7 +132,7 @@ The `startUrls` attribute should cotain an array of URLs as follows:
         ...
     ],
     "simple": false,
-    "minScore": 8.4,
+    "minScore": "8.4",
     ...
 }
 ```
@@ -153,10 +153,6 @@ In case of using the `simple` INPUT attribute, an example output for a single ho
   "roomType": "Deluxe Three-Bedroom Apartment with Terrace",
   "persons": 4,
   "address": "Prague 01, Prague",
-  "location": {
-    "lat": "14.4199419021606",
-    "lng": "50.0903216331068"
-  }
 }
 ```
 
@@ -169,7 +165,7 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
   "name": "Centrum Apartments Old Town",
   "type": "Apartment",
   "description": "Situated in the centre of Prague in a historical building near the Pařížská street, 500 metres from the Old Town Square, the Pragueaparts Old town E offers...",
-  "stars": "4",
+  "stars": 4,
   "rating": 10,
   "reviews": 7,
   "breakfast": null,
@@ -237,7 +233,7 @@ The average consumption is **1 Compute unit for 75 actor pages** scraped
   `checkOut` INPUT attributes (Booking.com only shows room info for specific dates).
 
 * Booking.com sometimes returns some suggested hotels that are outside of the expected city/region as a recommendation.
-  The ator will return all of them in the crawling results so you may recognize more results than your search.
+  The actor will return all of them in the crawling results so you may recognize more results than your search.
 
 
 ## Changelog

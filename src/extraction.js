@@ -200,7 +200,6 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             /* eslint-disable */
             const origin = window.location.origin;
             /* eslint-enable */
-            const occ = jThis.find('.sr_max_occupancy i, .c-occupancy-icons__adults i').length;
             const rl1 = jThis.find('.room_link span').eq(0).contents();
             // eslint-disable-next-line max-len
             const rl2 = jThis.find('.room_link strong').length > 0 ? jThis.find('.room_link strong') : jThis.find('[data-testid=recommended-units] [role=link]');
@@ -212,12 +211,8 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             const taxAndFee = taxAndFeeText.match(/\d+/);
             const rat = $(sr).attr('data-score') || jThis.find('[data-testid=review-score] > div:first-child').text();
             const starAttr = jThis.find('.bui-rating').attr('aria-label');
-            const stars = starAttr ? starAttr.match(/\d/) : jThis.find('[data-testid=rating-stars] span').length;
-            const buiLink1 = jThis.find('.bui-link--primary');
-            const buiLink2 = jThis.find('a.district_link, .bui-link').eq(0);
-            const address = (buiLink2.length > 0 ? buiLink2 : buiLink1.contents().eq(0)).text().trim().split('\n')[0].trim();
-            const loc = (buiLink1.length > 0 ? buiLink1 : buiLink2).attr('data-coords');
-            const latlng = loc ? loc.split(',') : null;
+            const stars = starAttr ? starAttr.match(/\d/) : [jThis.find('[data-testid=rating-stars] span').length];
+            const starsCount = stars ? parseInt(stars[0], 10) : null;
             const image = jThis.find('.sr_item_photo_link.sr_hotel_preview_track').attr('style');
             const hotelLink = jThis.find('.hotel_name_link').attr('href');
             let url = hotelLink ? hotelLink.replace(/\n/g, '') : jThis.find('a').attr('href').replace(/\n/g, '');
@@ -227,17 +222,27 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 name: $(sr).find('.sr-hotel__name, [data-testid=title]').text().trim(),
                 rating: rat ? parseFloat(rat.replace(',', '.')) : null,
                 reviews: nReviews ? parseInt(nReviews[0], 10) : null,
-                stars: stars ? parseInt(stars[0], 10) : null,
+                stars: starsCount !== 0 ? starsCount : null,
                 price: pr ? (parseFloat(pr[0]) + (taxAndFee ? parseFloat(taxAndFee[0]) : 0)) : null,
                 currency: pc ? pc[0].trim() : null,
                 roomType: rl2.length > 0 ? rl2.text().trim() : rl1.eq(0).text().trim(),
-                persons: occ || null,
-                address: address || jThis.find('[data-testid=address]').text(),
-                location: latlng ? { lat: latlng[0], lng: latlng[1] } : null,
+                address: jThis.find('[data-testid=address]').text(),
                 image,
             };
-            if (!minScore || (item.rating && item.rating >= minScore)) { result.push(item); }
-            if (++finished >= started) { resolve(result); }
+
+            const DEFAULT_MIN_RATING = 8.4;
+
+            // if no rating is scraped, consider item's rating valid (set it to max rating + 1)
+            const MAX_RATING = 10;
+            const rating = item.rating || MAX_RATING + 1;
+
+            if ((minScore && rating >= minScore) || (!minScore && rating >= DEFAULT_MIN_RATING)) {
+                result.push(item);
+            }
+
+            if (++finished >= started) {
+                resolve(result);
+            }
         });
     });
 });
