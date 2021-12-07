@@ -155,7 +155,6 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
         { isSet: adults, name: 'group_adults', value: adults },
         { isSet: children, name: 'group_children', value: children },
         { isSet: rooms, name: 'no_rooms', value: rooms },
-        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
     ];
 
     addMinMaxPriceParameter(minMaxPrice, queryParameters);
@@ -167,6 +166,13 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
             extendedUrl.searchParams.set(name, value);
         }
     });
+
+    if (!url.includes('review_score')) {
+        /* we need to check for url.includes instead of searchParams.has because if startUrl is specified,
+        it might use nflt=review_score query param which can not be checked by searchParams.has effectively due to URI encoding */
+        const reviewScore = minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE;
+        extendedUrl.searchParams.set('review_score', reviewScore);
+    }
 
     return extendedUrl.toString();
 };
