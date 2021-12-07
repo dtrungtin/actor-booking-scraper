@@ -62,9 +62,8 @@ module.exports = async ({ page, request, session, crawler, requestQueue, startUr
         // Handle hotel list page.
         const filtered = await isFiltered(page);
         const settingFilters = input.useFilters && !filtered;
-        const settingMinMaxPrice = input.minMaxPrice !== 'none' && !await isMinMaxPriceSet(page, input);
         const settingPropertyType = input.propertyType !== 'none' && !await isPropertyTypeSet(page, input);
-        const enqueuingReady = !(settingFilters || settingMinMaxPrice || settingPropertyType);
+        const enqueuingReady = !(settingFilters || settingPropertyType);
 
         // Check if the page was open through working proxy.
         const pageUrl = page.url();
@@ -85,11 +84,6 @@ module.exports = async ({ page, request, session, crawler, requestQueue, startUr
         // If property type is enabled, enqueue necessary page.
         if (settingPropertyType) {
             await setPropertyType(page, input, requestQueue);
-        }
-
-        // If min-max price is enabled, enqueue necessary page.
-        if (settingMinMaxPrice && !settingPropertyType) {
-            await setMinMaxPrice(page, input, requestQueue, crawler);
         }
 
         // If filtering is enabled, enqueue necessary pages.

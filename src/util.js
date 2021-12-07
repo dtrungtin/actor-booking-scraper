@@ -124,12 +124,8 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
     return url;
 };
 
-const addMinMaxPriceParameter = (minMaxPrice, queryParameters) => {
-    const minMaxPriceIndex = PRICE_LABELS.indexOf(minMaxPrice);
-
-    if (minMaxPriceIndex !== -1) {
-        queryParameters.push({ isSet: minMaxPrice, name: 'pri', value: minMaxPriceIndex + 1 });
-    }
+const addMinMaxPriceParameter = (minMaxPrice, currency, queryParameters) => {
+    queryParameters.push({ isSet: minMaxPrice, name: 'price', value: `${currency}-${minMaxPrice}-1` });
 };
 
 const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
@@ -155,24 +151,22 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
         { isSet: adults, name: 'group_adults', value: adults },
         { isSet: children, name: 'group_children', value: children },
         { isSet: rooms, name: 'no_rooms', value: rooms },
+        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
     ];
 
-    addMinMaxPriceParameter(minMaxPrice, queryParameters);
+    const currencyValue = extendedUrl.searchParams.get('selected_currency') || 'USD';
+
+    addMinMaxPriceParameter(minMaxPrice, currencyValue, queryParameters);
     addCheckInCheckOutParameters(checkIn, checkOut, queryParameters);
 
     queryParameters.forEach((parameter) => {
         const { isSet, name, value } = parameter;
-        if (isSet && !extendedUrl.searchParams.has(name)) {
+        if (isSet && !extendedUrl.searchParams.has(name) && !url.includes(`nflt=${name}`)) {
+            /* we need to check for url.includes besides searchParams.has because if startUrl is specified,
+            it might use nflt=param_name which can not be checked by searchParams.has effectively due to URI encoding */
             extendedUrl.searchParams.set(name, value);
         }
     });
-
-    if (!url.includes('review_score')) {
-        /* we need to check for url.includes instead of searchParams.has because if startUrl is specified,
-        it might use nflt=review_score query param which can not be checked by searchParams.has effectively due to URI encoding */
-        const reviewScore = minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE;
-        extendedUrl.searchParams.set('review_score', reviewScore);
-    }
 
     return extendedUrl.toString();
 };
@@ -226,12 +220,7 @@ module.exports.isPropertyTypeSet = async (page, input) => {
                 if (label) {
                     const fText = label.textContent.trim();
                     if (fText === propertyType) {
-                        const cls = filter.className;
-                        if (!cls.includes('active')) {
-                            return false;
-                        }
-
-                        return true;
+                        return filter.className.includes('active');
                     }
                 }
             }
@@ -264,41 +253,6 @@ module.exports.setPropertyType = async (page, input, requestQueue) => {
             break;
         }
     }
-};
-
-module.exports.isMinMaxPriceSet = async (page, input) => {
-    if (input.minMaxPrice !== 'none') {
-        const filterOptions = await page.$$('.filteroptions');
-        if (filterOptions && filterOptions.length !== 0) {
-            const fPrices = await filterOptions[0].$$('.filterelement');
-            const index = PRICE_LABELS.indexOf(input.minMaxPrice);
-            const cls = await getAttribute(fPrices[index], 'className');
-            return cls.includes('active');
-        }
-    }
-    return true;
-};
-
-module.exports.setMinMaxPrice = async (page, input, requestQueue, crawler) => {
-    log.info('enqueuing min-max price page...');
-    const urlMod = fixUrl('&', input);
-    const fPrices = await (await page.$$('.filteroptions'))[0].$$('.filterelement');
-    const index = PRICE_LABELS.indexOf(input.minMaxPrice);
-    const label = await (fPrices[index]).$('.filter_label');
-    const fText = await getAttribute(label, 'textContent');
-    const fLabel = fText.replace(/[^\d-+]/g, '');
-    if (!PRICE_LABELS.includes(fLabel)) {
-        log.error(`Cannot find price range filter: ${input.minMaxPrice}`);
-        crawler.autoscaledPool.abort();
-    }
-
-    log.info(`Using filter: ${fText}`);
-    const href = await getAttribute(fPrices[index], 'href');
-    await requestQueue.addRequest({
-        userData: { label: 'page' },
-        url: urlMod(href),
-        uniqueKey: `${fText}_${0}`,
-    });
 };
 
 const DATE_FORMAT = 'YYYY-MM-DD';

@@ -53,9 +53,9 @@ const extractRoomsJQuery = () => {
         let occupancy;
         try { occupancy = occExtractor(row); } catch (e) { occupancy = null; }
         const persons = occupancy ? occupancy.match(/\d+/) : null;
-        const priceE = row.find('.bui-price-display__value').eq(0);
-        const priceT = priceE.length > 0 ? priceE.text().replace(/\s|,/g, '').match(/(\d|\.)+/) : null;
-        const priceC = priceE.length > 0 ? priceE.text().replace(/\s|,/g, '').match(/[^\d.]+/) : null;
+        const priceE = row.find('.bui-price-display__value .prco-valign-middle-helper').eq(0);
+        const priceT = priceE.length > 0 ? priceE.text().replaceAll(',', '.').replace(/[^\d.]+/g, '') : null;
+        const priceC = priceE.length > 0 ? priceE.text().replace(/[\d.\n\t, ]+/g, '') : null;
         const cond = row.find('.hprt-conditions li');
         const taxAndFeeText = row.find('.prd-taxes-and-fees-under-price').eq(0).text().trim();
         const taxAndFee = taxAndFeeText.match(/\d+/);
@@ -65,12 +65,12 @@ const extractRoomsJQuery = () => {
         if (bedText) { room.bedType = bedText.replace(/\n+/g, ' '); }
         if (persons) { room.persons = parseInt(persons[0], 10); }
         if (priceT && priceC) {
-            room.price = parseFloat(priceT[0]);
+            room.price = parseFloat(priceT);
             if (taxAndFee) {
                 room.price += (taxAndFee ? parseFloat(taxAndFee[0]) : 0);
             }
             // eslint-disable-next-line prefer-destructuring
-            room.currency = priceC[0];
+            room.currency = priceC;
             room.features = features;
         } else { room.available = false; }
         if (cond.length > 0) {
@@ -190,23 +190,27 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
 
         ++started;
         sr.scrollIntoView();
-        const getPrice = function () {
+        const getPrices = function () {
             // eslint-disable-next-line max-len
             return $(sr).find('.bui-price-display__value, :not(strong).site_price, .totalPrice, strong.price, [data-testid=price-and-discounted-price] > span');
         };
 
         // When the price is ready, extract data.
-        waitFor(() => { return getPrice().length > 0; }, () => {
+        waitFor(() => { return getPrices().length > 0; }, () => {
             /* eslint-disable */
             const origin = window.location.origin;
             /* eslint-enable */
             const rl1 = jThis.find('.room_link span').eq(0).contents();
             // eslint-disable-next-line max-len
             const rl2 = jThis.find('.room_link strong').length > 0 ? jThis.find('.room_link strong') : jThis.find('[data-testid=recommended-units] [role=link]');
-            const prtxt = getPrice().eq(0).text().trim()
+
+            // if more prices are extracted, first one is the original, second one is current discount
+            const prices = getPrices();
+            const prtxt = prices.length > 1 ? prices.eq(1).text() : prices.eq(0).text()
                 .replace(/,|\s/g, '');
-            const pr = prtxt.match(/\d+/);
-            const pc = prtxt.match(/[^\d]+/);
+            const pr = prtxt.match(/[\d.]+/);
+            const pc = prtxt.match(/[^\d.]+/);
+
             const taxAndFeeText = jThis.find('.prd-taxes-and-fees-under-price').eq(0).text().trim();
             const taxAndFee = taxAndFeeText.match(/\d+/);
             const rat = $(sr).attr('data-score') || jThis.find('[data-testid=review-score] > div:first-child').text();
