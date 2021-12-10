@@ -2,7 +2,7 @@ const Apify = require('apify');
 const moment = require('moment');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 
-const { PRICE_LABELS, MAX_OFFSET, DEFAULT_MIN_SCORE } = require('./consts');
+const { MAX_OFFSET, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -124,8 +124,26 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
     return url;
 };
 
+const addPropertyTypeParameter = (propertyType, queryParameters) => {
+    const setParameter = propertyType && propertyType !== 'none';
+
+    if (setParameter && !PROPERTY_TYPE_IDS[propertyType]) {
+        log.info(`Unknown property type '${propertyType}'. Valid values are: ${PROPERTY_TYPE_IDS}`);
+    }
+
+    queryParameters.push({ isSet: setParameter, name: 'ht_id', value: PROPERTY_TYPE_IDS[propertyType] });
+};
+
 const addMinMaxPriceParameter = (minMaxPrice, currency, queryParameters) => {
-    queryParameters.push({ isSet: minMaxPrice, name: 'price', value: `${currency}-${minMaxPrice}-1` });
+    const setParameter = minMaxPrice && minMaxPrice !== 'none';
+
+    if (setParameter) {
+        // handles "200+" price format
+        const minMaxParsed = minMaxPrice.includes('+') ? `${parseInt(minMaxPrice, 10)}-max` : minMaxPrice;
+
+        // sets min max price using custom filter rather than pre-defined price category (categories have different ranges for some currencies)
+        queryParameters.push({ isSet: setParameter, name: 'price', value: `${currency}-${minMaxParsed}-1` });
+    }
 };
 
 const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
@@ -139,7 +157,7 @@ const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
 };
 
 const addUrlParametersForHotelListingUrl = (url, input) => {
-    const { currency, language, adults, children, rooms, minScore, minMaxPrice, checkIn, checkOut } = input;
+    const { currency, language, adults, children, rooms, minScore, minMaxPrice, propertyType, checkIn, checkOut } = input;
 
     const extendedUrl = new URL(url);
 
@@ -156,6 +174,7 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
 
     const currencyValue = extendedUrl.searchParams.get('selected_currency') || 'USD';
 
+    addPropertyTypeParameter(propertyType, queryParameters);
     addMinMaxPriceParameter(minMaxPrice, currencyValue, queryParameters);
     addCheckInCheckOutParameters(checkIn, checkOut, queryParameters);
 
@@ -210,50 +229,6 @@ module.exports.fixUrl = fixUrl;
  * @param {Page} page - The page to be checked.
  */
 module.exports.isFiltered = (page) => page.$('.filterelement.active');
-
-module.exports.isPropertyTypeSet = async (page, input) => {
-    if (input.propertyType !== 'none') {
-        const set = await page.evaluate((propertyType) => {
-            const filters = Array.from(document.querySelectorAll('.filterelement'));
-            for (const filter of filters) {
-                const label = filter.querySelector('.filter_label');
-                if (label) {
-                    const fText = label.textContent.trim();
-                    if (fText === propertyType) {
-                        return filter.className.includes('active');
-                    }
-                }
-            }
-
-            return true;
-        }, input.propertyType);
-
-        return set;
-    }
-
-    return true;
-};
-
-module.exports.setPropertyType = async (page, input, requestQueue) => {
-    log.info('enqueuing property type page...');
-    const filters = await page.$$('.filterelement');
-    const urlMod = fixUrl('&', input);
-    for (const filter of filters) {
-        const label = await filter.$('.filter_label');
-        const fText = await getAttribute(label, 'textContent');
-        if (fText === input.propertyType) {
-            log.info(`Using filter 1: ${fText}`);
-            const href = await getAttribute(filter, 'href');
-            await requestQueue.addRequest({
-                userData: { label: 'page' },
-                url: urlMod(href),
-                uniqueKey: `${fText}_0`,
-            });
-
-            break;
-        }
-    }
-};
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 

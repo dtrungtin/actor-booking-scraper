@@ -3,12 +3,12 @@ const Apify = require('apify');
 const { extractDetail, listPageFunction } = require('./extraction');
 const {
     getAttribute, enqueueLinks, addUrlParameters, fixUrl, isObject,
-    isFiltered, isMinMaxPriceSet, setMinMaxPrice, isPropertyTypeSet, setPropertyType, enqueueAllPages,
+    isFiltered, enqueueAllPages,
 } = require('./util');
 
 const { log } = Apify.utils;
 
-module.exports = async ({ page, request, session, crawler, requestQueue, startUrls, input,
+module.exports = async ({ page, request, session, requestQueue, startUrls, input,
     extendOutputFunction, sortBy, maxPages, state }) => {
     log.info(`open url(${request.userData.label}): ${page.url()}`);
 
@@ -20,14 +20,14 @@ module.exports = async ({ page, request, session, crawler, requestQueue, startUr
         const ld = JSON.parse(await getAttribute(ldElem, 'textContent'));
         await Apify.utils.puppeteer.injectJQuery(page);
 
-        // Check if the page was open through working proxy.
+        // Check if the page was opened through working proxy.
         const pageUrl = page.url();
         if (!startUrls && pageUrl.indexOf('label') < 0) {
             session.retire();
             throw new Error(`Page was not opened correctly`);
         }
 
-        // Exit if core data is not present ot the rating is too low.
+        // Exit if core data is not present or the rating is too low.
         if (!ld || (input.minScore && ld.aggregateRating && ld.aggregateRating.ratingValue < input.minScore)) {
             return;
         }
@@ -62,8 +62,7 @@ module.exports = async ({ page, request, session, crawler, requestQueue, startUr
         // Handle hotel list page.
         const filtered = await isFiltered(page);
         const settingFilters = input.useFilters && !filtered;
-        const settingPropertyType = input.propertyType !== 'none' && !await isPropertyTypeSet(page, input);
-        const enqueuingReady = !(settingFilters || settingPropertyType);
+        const enqueuingReady = !(settingFilters);
 
         // Check if the page was open through working proxy.
         const pageUrl = page.url();
@@ -79,11 +78,6 @@ module.exports = async ({ page, request, session, crawler, requestQueue, startUr
             } else if (!maxPages || maxPages > 1) {
                 await enqueueAllPages(page, requestQueue, input, maxPages);
             }
-        }
-
-        // If property type is enabled, enqueue necessary page.
-        if (settingPropertyType) {
-            await setPropertyType(page, input, requestQueue);
         }
 
         // If filtering is enabled, enqueue necessary pages.
