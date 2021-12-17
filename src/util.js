@@ -289,27 +289,113 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
     }
 };
 
-module.exports.enqueueLinks = async (extractionInfo, urlInfo, requestQueue, state) => {
-    const { page, selector, attribute } = extractionInfo;
+module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, state) => {
+    const { page, unchecked, attribute } = extractionInfo;
     const { label, baseUrl } = urlInfo;
+    const { enqueuedUrls } = state;
 
-    const linkElements = await page.$$(selector);
+    const url = new URL(baseUrl);
 
-    for (const element of linkElements) {
-        const filterValue = await getAttribute(element, attribute);
+    const uncheckedElements = await page.$$(unchecked);
+    const uncheckedFilters = await getFilterNameValues(uncheckedElements, attribute);
 
-        const [name, value] = filterValue.split('=');
+    const filtersToEnqueue = getFiltersToEnqueue(uncheckedFilters, enqueuedUrls, url);
 
-        const url = new URL(baseUrl);
-        if (!url.searchParams.has(name) && !baseUrl.includes(`nflt=${name}`)) {
-            url.searchParams.set(name, value);
+    log.info(`filters to enqueue count: ${filtersToEnqueue.length}`);
 
-            await requestQueue.addRequest({
-                url: url.toString(),
-                userData: { label, filtered: true },
-            });
-        }
-    }
+    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls);
 };
 
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
+
+const getFilterNameValues = async (elements, attribute) => {
+    const nameValues = {};
+
+    for (const element of elements) {
+        const filterValue = await getAttribute(element, attribute);
+
+        const [name, value] = filterValue.split('=');
+        nameValues[name] = nameValues[name] || [];
+        nameValues[name].push(value);
+    }
+
+    // log.info(`name values: ${JSON.stringify(nameValues, null, 2)}`);
+
+    return nameValues;
+};
+
+const getFiltersToEnqueue = (uncheckedFilters, enqueuedUrls, url) => {
+    const filtersToEnqueue = [];
+
+    Object.keys(uncheckedFilters).forEach((name) => {
+        const values = uncheckedFilters[name].filter((value) => {
+            // remove value which is included with the same parameter in current url
+            return value && !url.search.includes(`${name}=${value}`);
+        });
+
+        // log.info(`filtered values: ${JSON.stringify(values, null, 2)}`);
+
+        const isFilterEnqueued = isFilterAlreadyEnqueued(name, url, enqueuedUrls);
+
+        if (!isFilterEnqueued) {
+            filtersToEnqueue.push({ name, values });
+        }
+    });
+
+    return filtersToEnqueue;
+};
+
+const isFilterAlreadyEnqueued = (name, url, enqueuedUrls) => {
+    const updatedUrl = new URL(url);
+    updatedUrl.searchParams.set(name, 'example');
+
+    for (const enqueuedUrl of enqueuedUrls) {
+        if (haveSameQueryParamNames(updatedUrl, enqueuedUrl)) {
+            log.info(`updatedUrl: ${updatedUrl}
+            enqueued url: ${enqueuedUrl}`);
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const haveSameQueryParamNames = (firstUrl, secondUrl) => {
+    if (firstUrl.pathname !== secondUrl.pathname) {
+        return false;
+    }
+
+    for (const key of firstUrl.searchParams.keys()) {
+        if (!secondUrl.searchParams.has(key)) {
+            return false;
+        }
+    }
+
+    for (const key of secondUrl.searchParams.keys()) {
+        if (!firstUrl.searchParams.has(key)) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
+const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls) => {
+    for (const filter of filters) {
+        const { name, values } = filter;
+
+        for (const value of values) {
+            const url = new URL(baseUrl);
+            url.searchParams.set(name, value);
+
+            if (!enqueuedUrls.includes(url)) {
+                enqueuedUrls.push(url);
+
+                await requestQueue.addRequest({
+                    url: url.toString(),
+                    userData: { label },
+                });
+            }
+        }
+    }
+};

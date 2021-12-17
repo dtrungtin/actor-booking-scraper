@@ -3,7 +3,7 @@ const Apify = require('apify');
 const { extractDetail, listPageFunction } = require('./extraction');
 const {
     getAttribute, addUrlParameters, fixUrl, isObject,
-    enqueueLinks, enqueueAllPages,
+    enqueueFilterLinks, enqueueAllPages,
 } = require('./util');
 
 const { log } = Apify.utils;
@@ -18,7 +18,7 @@ module.exports = async ({ page, request, session, extendOutputFunction, requestQ
     if (label === 'detail') { // Extract data from the hotel detail page
         await handleDetailPage(page, input, userData, session, extendOutputFunction);
     } else {
-        await handleStartPage(page, input, request, session, requestQueue, sortBy, state);
+        await handleListPage(page, input, request, session, requestQueue, sortBy, state);
     }
 };
 
@@ -49,7 +49,36 @@ const handleDetailPage = async (page, input, userData, session, extendOutputFunc
     await Apify.pushData({ ...detail, ...userResult });
 };
 
-const getUserResult = async (page, extendOutputFunction, inputExtendOutputFunction) => {
+const handleListPage = async (page, input, request, session, requestQueue, sortBy, state) => {
+    const { startUrls, useFilters, simple } = input;
+    const { userData } = request;
+    const { label } = userData;
+
+    await waitForListPageToLoad(page);
+
+    // Check if the page was opened through working proxy.
+    validateProxy(page, session, startUrls, sortBy);
+
+    const items = await getResultsCount(page);
+    if (items.length === 0) {
+        log.info('Found no result. Skipping...');
+        return;
+    }
+
+    await extractCurrentListPage(page, input, requestQueue, state, simple);
+
+    // If filtering is enabled, enqueue filtered pages.
+    if (useFilters) {
+        await enqueueFilteredPages(page, request, requestQueue, state);
+    }
+
+    // If it's aprropriate, enqueue all pagination pages
+    if (label !== 'page') {
+        await enqueuePaginationPages(page, input, requestQueue);
+    }
+};
+
+const getUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
     let userResult = {};
 
     if (extendOutputFunction) {
@@ -57,7 +86,7 @@ const getUserResult = async (page, extendOutputFunction, inputExtendOutputFuncti
             // eslint-disable-next-line no-eval
             const f = eval(functionStr);
             return f(window.jQuery);
-        }, inputExtendOutputFunction);
+        }, stringifiedExtendOutputFunction);
 
         if (!isObject(userResult)) {
             log.info('extendOutputFunction has to return an object!!!');
@@ -68,55 +97,26 @@ const getUserResult = async (page, extendOutputFunction, inputExtendOutputFuncti
     return userResult;
 };
 
-const handleStartPage = async (page, input, request, session, requestQueue, sortBy, state) => {
-    const { startUrls, useFilters, simple } = input;
-    const { userData } = request;
-    const { filtered } = userData;
-
-    await waitForStartPageToLoad(page);
-
-    const enqueuingReady = filtered || !(useFilters);
-
-    // Check if the page was opened through working proxy.
-    validateProxy(page, session, startUrls, sortBy);
-
-    // If it's aprropriate, enqueue all pagination pages
-    if (enqueuingReady) {
-        await enqueuePaginationPages(page, input, requestQueue);
-    }
-
-    const items = await getResultsCount(page);
-    if (items.length === 0) {
-        log.info('Found no result. Skipping...');
-        return;
-    }
-
-    if (enqueuingReady && simple) {
-        // If simple output is enough, extract the data.
-        const data = await extractSimpleData(page, input, state);
-        if (data.length > 0) {
-            await Apify.pushData(data);
-        }
-    } else if (enqueuingReady) {
-        // If not, enqueue the detail pages to be extracted.
-        await enqueueDetailPages(page, input, requestQueue);
-    }
-
-    // If filtering is enabled, enqueue necessary pages.
-    if (useFilters) {
-        await enqueueFilterPages(page, request, requestQueue, state);
-    }
-};
-
 const enqueuePaginationPages = async (page, input, requestQueue) => {
     const { maxPages, useFilters, minMaxPrice, propertyType } = input;
     if (!maxPages || maxPages > 1 || useFilters || minMaxPrice !== 'none' || propertyType !== 'none') {
-        if (input.useFilters) {
-            await enqueueAllPages(page, requestQueue, input, 0);
-        } else if (!maxPages || maxPages > 1) {
-            await enqueueAllPages(page, requestQueue, input, maxPages);
+        if (useFilters || (!maxPages || maxPages > 1)) {
+            const pagesToEnqueue = useFilters ? 0 : maxPages;
+            await enqueueAllPages(page, requestQueue, input, pagesToEnqueue);
         }
     }
+};
+
+const enqueueFilteredPages = async (page, request, requestQueue, state) => {
+    log.info('enqueuing filtered pages...');
+
+    const attribute = 'value';
+    const unchecked = `[type="checkbox"][${attribute}]:not([checked]):not(.bui-checkbox__input)`;
+
+    const extractionInfo = { page, unchecked, attribute };
+    const urlInfo = { baseUrl: request.url, label: 'start' };
+
+    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue, state);
 };
 
 const enqueueDetailPages = async (page, input, requestQueue) => {
@@ -151,19 +151,7 @@ const enqueueDetailPages = async (page, input, requestQueue) => {
     }
 };
 
-const enqueueFilterPages = async (page, request, requestQueue, state) => {
-    log.info('enqueuing filtered pages...');
-
-    const attributeToExtract = 'value';
-    const filterCheckboxSelector = `[type="checkbox"][${attributeToExtract}]:not([checked]):not(.bui-checkbox__input)`;
-
-    const extractionInfo = { page, selector: filterCheckboxSelector, attribute: attributeToExtract };
-    const urlInfo = { baseUrl: request.url, label: 'start' };
-
-    await enqueueLinks(extractionInfo, urlInfo, requestQueue, state);
-};
-
-const waitForStartPageToLoad = async (page) => {
+const waitForListPageToLoad = async (page) => {
     const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
     await page.waitForSelector(countSelector, { timeout: 60000 });
     const heading = await page.$(countSelector);
@@ -215,4 +203,17 @@ const extractSimpleData = async (page, input, state) => {
     }
 
     return toBeAdded;
+};
+
+const extractCurrentListPage = async (page, input, requestQueue, state, simple) => {
+    if (simple) {
+        // If simple output is enough, extract the data.
+        const data = await extractSimpleData(page, input, state);
+        if (data.length > 0) {
+            await Apify.pushData(data);
+        }
+    } else {
+        // If not, enqueue the detail pages to be extracted.
+        await enqueueDetailPages(page, input, requestQueue);
+    }
 };

@@ -24,7 +24,7 @@ Apify.main(async () => {
     const errorSnapshotter = new ErrorSnapshotter();
     await errorSnapshotter.initialize(Apify.events);
 
-    const state = await Apify.getValue('STATE') || { crawled: {} };
+    const state = await Apify.getValue('STATE') || { crawled: {}, enqueuedUrls: [] };
 
     Apify.events.on('persistState', async () => {
         await Apify.setValue('STATE', state);
