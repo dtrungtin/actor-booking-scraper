@@ -346,7 +346,7 @@
         "minMaxPrice": {
             "title": "Price range",
             "type": "string",
-            "description": "Minimum-maximum price range in '100-150' or '200+' format",
+            "description": "Minimum-maximum price range in 100-150 or 200+ format",
             "editor": "textfield",
             "prefill": "100-150"
         },

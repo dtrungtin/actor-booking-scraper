@@ -2,7 +2,7 @@ const Apify = require('apify');
 const moment = require('moment');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 
-const { MAX_OFFSET, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS } = require('./consts');
+const { MAX_OFFSET, DATE_FORMAT, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -21,30 +21,6 @@ const getAttribute = async (element, attr, fallback = '') => {
     }
 };
 module.exports.getAttribute = getAttribute;
-
-/**
- * Adds links from a page to the RequestQueue.
- * @param {Puppeteer.Page} page - Puppeteer Page object containing the link elements.
- * @param {Apify.RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {string} selector - A selector representing the links.
- * @param {Function} condition - Function to check if the link is to be added.
- * @param {string} label - A label for the added requests.
- * @param {Function} urlMod - Function for modifying the URL.
- * @param {Function} keyMod - Function for generating uniqueKey from the link ElementHandle.
- */
-module.exports.enqueueLinks = async (page, requestQueue, selector, condition, label, urlMod, keyMod) => {
-    const links = await page.$$(selector);
-    for (const link of links) {
-        const href = await getAttribute(link, 'href');
-        if (href && (!condition || await condition(link))) {
-            await requestQueue.addRequest({
-                userData: { label },
-                url: urlMod ? urlMod(href) : href,
-                uniqueKey: keyMod ? (await keyMod(link)) : href,
-            });
-        }
-    }
-};
 
 /**
  * Adds URL parameters to a Booking.com Hotel Detail URL (timespan, language and currency).
@@ -209,7 +185,7 @@ module.exports.addUrlParameters = addUrlParameters;
  * Creates a function to make sure the URL contains all necessary attributes from INPUT.
  * @param {string} s - The URL attribute separator (& or ;).
  */
-const fixUrl = (s, input) => (href) => {
+module.exports.fixUrl = (s, input) => (href) => {
     href = href.replace(/#([a-zA-Z_]+)/g, '');
     if (input.language && href.indexOf('lang') < 0) {
         const lng = input.language.replace('_', '-');
@@ -222,15 +198,6 @@ const fixUrl = (s, input) => (href) => {
     }
     return href.replace(/&{n,}/g, '&').replace('?&', '?');
 };
-module.exports.fixUrl = fixUrl;
-
-/**
- * Checks if page has some criteria filtering enabled.
- * @param {Page} page - The page to be checked.
- */
-module.exports.isFiltered = (page) => page.$('.filterelement.active');
-
-const DATE_FORMAT = 'YYYY-MM-DD';
 
 /**
  * @param {string} date
@@ -318,6 +285,26 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
             }
         } catch (e) {
             log.info(e);
+        }
+    }
+};
+
+module.exports.enqueueLinks = async (page, selector, attribute, label, baseUrl, requestQueue) => {
+    const linkElements = await page.$$(selector);
+
+    for (const element of linkElements) {
+        const filterValue = await getAttribute(element, attribute);
+
+        const [name, value] = filterValue.split('=');
+
+        const url = new URL(baseUrl);
+        if (!url.searchParams.has(name) && !baseUrl.includes(`nflt=${name}`)) {
+            url.searchParams.set(name, value);
+
+            await requestQueue.addRequest({
+                url: url.toString(),
+                userData: { label, filtered: true },
+            });
         }
     }
 };

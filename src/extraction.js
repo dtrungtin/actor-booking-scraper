@@ -3,8 +3,9 @@ const { getAttribute, addUrlParameters } = require('./util.js'); // eslint-disab
 
 /**
  * Extracts information about all rooms listed by the hotel using jQuery in browser context.
+ * Requires checkIn and checkOut properties to be set to make selectors work properly.
  */
-const extractRoomsJQuery = () => {
+const extractDetailedRoomsInfo = () => {
     let roomType;
     let bedText;
     let features;
@@ -14,11 +15,11 @@ const extractRoomsJQuery = () => {
     // Function for extracting occupancy info.
     const occExtractor = (row) => {
         if (!row || row.length < 1) { return null; }
-        /* eslint-disable */
+
         const occ1 = row.find('.hprt-occupancy-occupancy-info .invisible_spoken');
         const occ2 = row.find('.hprt-occupancy-occupancy-info').attr('data-title');
         const occ3 = row.find('.hprt-occupancy-occupancy-info').text();
-        /* eslint-enable */
+
         return occ1.length > 0 ? occ1.text() : (occ2 || occ3);
     };
 
@@ -62,7 +63,7 @@ const extractRoomsJQuery = () => {
 
         const room = { available: true };
         if (roomType) { room.roomType = roomType.text().trim(); }
-        if (bedText) { room.bedType = bedText.replace(/\n+/g, ' '); }
+        if (bedText) { room.bedType = bedText.replace(/\n+/g, ' ').trim(); }
         if (persons) { room.persons = parseInt(persons[0], 10); }
         if (priceT && priceC) {
             room.price = parseFloat(priceT);
@@ -82,6 +83,43 @@ const extractRoomsJQuery = () => {
         }
         rooms.push(room);
     }
+    return rooms;
+};
+
+/**
+ * Extracts information about all rooms listed by the hotel using jQuery in browser context.
+ * Requires empty checkIn and checkOut properties to make selectors work properly.
+ */
+const extractSimpleRoomsInfo = () => {
+    const $ = window.jQuery;
+    const { location: { href } } = window;
+
+    const roomInfoElements = $('.room-info');
+    const rooms = $.map(roomInfoElements, (el) => {
+        const roomType = $(el).find('[data-room-name-en]').text().trim();
+        const bedType = $(el).find('.rt-bed-type').text().trim()
+            .replace(/[\n]+/g, ' ');
+
+        const id = ($(el).attr('id') || '').replace(/^RD/g, '');
+        const url = `${href}#room_${id}`;
+
+        return { url, roomType, bedType };
+    });
+
+    const occupancyElements = $('.roomstable tbody td.occ_no_dates');
+    const persons = $.map(occupancyElements, (el) => {
+        const roomPersons = $(el).find('.occupancy_adults > .bicon').length;
+        const multiplier = $(el).find('.occupancy_multiplier_number').text().trim();
+        const multiplierValue = parseInt(multiplier, 10);
+
+        return multiplierValue ? multiplierValue * roomPersons : roomPersons;
+    });
+
+    for (let index = 0; index < rooms.length; index++) {
+        const room = rooms[index];
+        room.persons = persons[index];
+    }
+
     return rooms;
 };
 
@@ -121,7 +159,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const img2El = await page.$('#photo_wrapper img');
     const img2 = img2El ? await getAttribute(img2El, 'src') : null;
     const img3 = html.match(/large_url: '(.+)'/);
-    const rooms = await page.evaluate(extractRoomsJQuery);
+    const rooms = await extractRoomsInfo(page, input);
     const price = rooms.length > 0 ? rooms[0].price : null;
     const images = await page.evaluate(() => { return window.booking.env.hotelPhotos.map((photo) => photo.large_url); });
 
@@ -250,3 +288,11 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
         });
     });
 });
+
+const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
+    if (checkIn && checkOut) {
+        return page.evaluate(extractDetailedRoomsInfo);
+    }
+
+    return page.evaluate(extractSimpleRoomsInfo);
+};

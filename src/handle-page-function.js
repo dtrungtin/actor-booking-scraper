@@ -2,17 +2,19 @@ const Apify = require('apify');
 
 const { extractDetail, listPageFunction } = require('./extraction');
 const {
-    getAttribute, enqueueLinks, addUrlParameters, fixUrl, isObject,
-    isFiltered, enqueueAllPages,
+    getAttribute, addUrlParameters, fixUrl, isObject,
+    enqueueLinks, enqueueAllPages,
 } = require('./util');
 
 const { log } = Apify.utils;
 
 module.exports = async ({ page, request, session, requestQueue, startUrls, input,
     extendOutputFunction, sortBy, maxPages, state }) => {
-    log.info(`open url(${request.userData.label}): ${page.url()}`);
+    const { url, userData: { label, filtered } } = request;
 
-    if (request.userData.label === 'detail') { // Extract data from the hotel detail page
+    log.info(`open url(${label}): ${url}`);
+
+    if (label === 'detail') { // Extract data from the hotel detail page
         // wait for necessary elements
         try { await page.waitForSelector('.bicon-occupancy'); } catch (e) { log.info('occupancy info not found'); }
 
@@ -60,11 +62,10 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         log.info(headingText);
 
         // Handle hotel list page.
-        const filtered = await isFiltered(page);
-        const settingFilters = input.useFilters && !filtered;
-        const enqueuingReady = !(settingFilters);
+        const settingFilters = input.useFilters;
+        const enqueuingReady = filtered || !(settingFilters);
 
-        // Check if the page was open through working proxy.
+        // Check if the page was opened through working proxy.
         const pageUrl = page.url();
         if (!startUrls && pageUrl.indexOf(sortBy) < 0) {
             session.retire();
@@ -84,10 +85,9 @@ module.exports = async ({ page, request, session, requestQueue, startUrls, input
         if (settingFilters) {
             log.info('enqueuing filtered pages...');
 
-            await enqueueLinks(page, requestQueue, '.filterelement', null, 'page', fixUrl('&', input), async (link) => {
-                const lText = await getAttribute(link, 'textContent');
-                return `${lText}_0`;
-            });
+            const attributeToExtract = 'value';
+            const filterCheckboxSelector = `[type="checkbox"][${attributeToExtract}]:not([checked]):not(.bui-checkbox__input)`;
+            await enqueueLinks(page, filterCheckboxSelector, attributeToExtract, 'start', request.url, requestQueue);
         }
 
         // eslint-disable-next-line max-len
