@@ -289,7 +289,10 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
     }
 };
 
-module.exports.enqueueLinks = async (page, selector, attribute, label, baseUrl, requestQueue) => {
+module.exports.enqueueLinks = async (extractionInfo, urlInfo, requestQueue, state) => {
+    const { page, selector, attribute } = extractionInfo;
+    const { label, baseUrl } = urlInfo;
+
     const linkElements = await page.$$(selector);
 
     for (const element of linkElements) {
