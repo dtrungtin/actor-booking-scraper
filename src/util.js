@@ -299,9 +299,13 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
     const uncheckedElements = await page.$$(unchecked);
     const uncheckedFilters = await getFilterNameValues(uncheckedElements, attribute);
 
-    const filtersToEnqueue = getFiltersToEnqueue(uncheckedFilters, enqueuedUrls, url);
+    const validFilters = getValidFilters(uncheckedFilters);
+    const filtersToEnqueue = getFiltersToEnqueue(validFilters, enqueuedUrls, url);
+    const newFiltersCount = filtersToEnqueue.length;
 
-    log.info(`filters to enqueue count: ${filtersToEnqueue.length}`);
+    if (newFiltersCount) {
+        log.info(`enqueuing pages with ${filtersToEnqueue.length} new filters set...`);
+    }
 
     await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls);
 };
@@ -319,21 +323,30 @@ const getFilterNameValues = async (elements, attribute) => {
         nameValues[name].push(value);
     }
 
-    // log.info(`name values: ${JSON.stringify(nameValues, null, 2)}`);
-
     return nameValues;
 };
 
-const getFiltersToEnqueue = (uncheckedFilters, enqueuedUrls, url) => {
+const getValidFilters = (uncheckedFilters) => {
+    const validFilters = { ...uncheckedFilters };
+
+    /* Exclude review_score from filter enqueuing. It has a strict value for each run that can not be changed
+    (even if it's unspecified in the input - default value is DEFAULT_MIN_SCORE). */
+    delete validFilters.review_score;
+
+    // Invalid filter that is scraped among other checkboxes.
+    delete validFilters['1'];
+
+    return validFilters;
+};
+
+const getFiltersToEnqueue = (filters, enqueuedUrls, url) => {
     const filtersToEnqueue = [];
 
-    Object.keys(uncheckedFilters).forEach((name) => {
-        const values = uncheckedFilters[name].filter((value) => {
+    Object.keys(filters).forEach((name) => {
+        const values = filters[name].filter((value) => {
             // remove value which is included with the same parameter in current url
             return value && !url.search.includes(`${name}=${value}`);
         });
-
-        // log.info(`filtered values: ${JSON.stringify(values, null, 2)}`);
 
         const isFilterEnqueued = isFilterAlreadyEnqueued(name, url, enqueuedUrls);
 
@@ -351,8 +364,6 @@ const isFilterAlreadyEnqueued = (name, url, enqueuedUrls) => {
 
     for (const enqueuedUrl of enqueuedUrls) {
         if (haveSameQueryParamNames(updatedUrl, enqueuedUrl)) {
-            log.info(`updatedUrl: ${updatedUrl}
-            enqueued url: ${enqueuedUrl}`);
             return true;
         }
     }
@@ -364,6 +375,11 @@ const haveSameQueryParamNames = (firstUrl, secondUrl) => {
     if (firstUrl.pathname !== secondUrl.pathname) {
         return false;
     }
+
+    /* Cross validation with matching firstUrl -> secondUrl parameters
+       as well as secondUrl -> firstUrl parameters. The length of searchParams
+       iterable can not be checked directly without looping through it.
+    */
 
     for (const key of firstUrl.searchParams.keys()) {
         if (!secondUrl.searchParams.has(key)) {
@@ -384,10 +400,12 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrl
     for (const filter of filters) {
         const { name, values } = filter;
 
+        // Enqueue filter with all possible values.
         for (const value of values) {
             const url = new URL(baseUrl);
             url.searchParams.set(name, value);
 
+            // Check that url with the exact same filters and values doesn't exist already.
             if (!enqueuedUrls.includes(url)) {
                 enqueuedUrls.push(url);
 

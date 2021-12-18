@@ -15,7 +15,7 @@ module.exports = async ({ page, request, session, extendOutputFunction, requestQ
 
     log.info(`open url(${label}): ${url}`);
 
-    if (label === 'detail') { // Extract data from the hotel detail page
+    if (label === 'detail') {
         await handleDetailPage(page, input, userData, session, extendOutputFunction);
     } else {
         await handleListPage(page, input, request, session, requestQueue, sortBy, state);
@@ -44,15 +44,14 @@ const handleDetailPage = async (page, input, userData, session, extendOutputFunc
     const detail = await extractDetail(page, ld, input, userData);
     log.info('detail extracted');
 
-    const userResult = await getUserResult(page, extendOutputFunction, input.extendOutputFunction);
+    const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
     await Apify.pushData({ ...detail, ...userResult });
 };
 
 const handleListPage = async (page, input, request, session, requestQueue, sortBy, state) => {
     const { startUrls, useFilters, simple } = input;
-    const { userData } = request;
-    const { label } = userData;
+    const { userData: { label } } = request;
 
     await waitForListPageToLoad(page);
 
@@ -65,20 +64,32 @@ const handleListPage = async (page, input, request, session, requestQueue, sortB
         return;
     }
 
-    await extractCurrentListPage(page, input, requestQueue, state, simple);
+    if (simple) {
+        // If simple output is enough, extract the data.
+        const results = await extractListPageResults(page, input, state);
+        await Apify.pushData(results);
+    } else {
+        // If not, enqueue the detail pages to be extracted.
+        await enqueueDetailPages(page, input, requestQueue);
+    }
 
     // If filtering is enabled, enqueue filtered pages.
     if (useFilters) {
         await enqueueFilteredPages(page, request, requestQueue, state);
     }
 
-    // If it's aprropriate, enqueue all pagination pages
-    if (label !== 'page') {
+    /* Enqueue all pagination pages from start page when useFilters is false.
+       With useFilters set, we enqueue all combinations of available filters and for each
+       combination, we scrape first page only to avoid pagination pages overload.
+       We should still get most of the results - the more specific filter combination,
+       the fewer results it yields.
+    */
+    if (!useFilters && label !== 'page') {
         await enqueuePaginationPages(page, input, requestQueue);
     }
 };
 
-const getUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
+const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
     let userResult = {};
 
     if (extendOutputFunction) {
@@ -89,7 +100,7 @@ const getUserResult = async (page, extendOutputFunction, stringifiedExtendOutput
         }, stringifiedExtendOutputFunction);
 
         if (!isObject(userResult)) {
-            log.info('extendOutputFunction has to return an object!!!');
+            log.error('extendOutputFunction has to return an object!!!');
             process.exit(1);
         }
     }
@@ -98,12 +109,10 @@ const getUserResult = async (page, extendOutputFunction, stringifiedExtendOutput
 };
 
 const enqueuePaginationPages = async (page, input, requestQueue) => {
-    const { maxPages, useFilters, minMaxPrice, propertyType } = input;
-    if (!maxPages || maxPages > 1 || useFilters || minMaxPrice !== 'none' || propertyType !== 'none') {
-        if (useFilters || (!maxPages || maxPages > 1)) {
-            const pagesToEnqueue = useFilters ? 0 : maxPages;
-            await enqueueAllPages(page, requestQueue, input, pagesToEnqueue);
-        }
+    const { maxPages } = input;
+
+    if (!maxPages || maxPages > 1) {
+        await enqueueAllPages(page, requestQueue, input, maxPages);
     }
 };
 
@@ -121,6 +130,7 @@ const enqueueFilteredPages = async (page, request, requestQueue, state) => {
 
 const enqueueDetailPages = async (page, input, requestQueue) => {
     log.info('enqueuing detail pages...');
+
     const urlMod = fixUrl('&', input);
     const keyMod = async (link) => (await getAttribute(link, 'textContent')).trim().replace(/\n/g, '');
 
@@ -170,6 +180,7 @@ const waitForDetailPageToLoad = async (page) => {
 
 const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     const pageUrl = page.url();
+
     if (!startUrls && pageUrl.indexOf(requiredQueryParam) < 0) {
         session.retire();
         throw new Error(`Page was not opened correctly`);
@@ -183,7 +194,7 @@ const getResultsCount = async (page) => {
     return items.length;
 };
 
-const extractSimpleData = async (page, input, state) => {
+const extractListPageResults = async (page, input, state) => {
     log.info('extracting data...');
     await Apify.utils.puppeteer.injectJQuery(page);
     const result = await page.evaluate(listPageFunction, input);
@@ -203,17 +214,4 @@ const extractSimpleData = async (page, input, state) => {
     }
 
     return toBeAdded;
-};
-
-const extractCurrentListPage = async (page, input, requestQueue, state, simple) => {
-    if (simple) {
-        // If simple output is enough, extract the data.
-        const data = await extractSimpleData(page, input, state);
-        if (data.length > 0) {
-            await Apify.pushData(data);
-        }
-    } else {
-        // If not, enqueue the detail pages to be extracted.
-        await enqueueDetailPages(page, input, requestQueue);
-    }
 };

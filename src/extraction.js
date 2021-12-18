@@ -259,6 +259,8 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             const hotelLink = jThis.find('.hotel_name_link').attr('href');
             let url = hotelLink ? hotelLink.replace(/\n/g, '') : jThis.find('a').attr('href').replace(/\n/g, '');
             url = url.includes(origin) ? url : `${origin}${url}`;
+            const textRoomType = rl2.length > 0 ? rl2.text().trim() : rl1.eq(0).text().trim();
+
             const item = {
                 url: url.split('?')[0],
                 name: $(sr).find('.sr-hotel__name, [data-testid=title]').text().trim(),
@@ -267,7 +269,7 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 stars: starsCount !== 0 ? starsCount : null,
                 price: pr ? (parseFloat(pr[0]) + (taxAndFee ? parseFloat(taxAndFee[0]) : 0)) : null,
                 currency: pc ? pc[0].trim() : null,
-                roomType: rl2.length > 0 ? rl2.text().trim() : rl1.eq(0).text().trim(),
+                roomType: textRoomType || null,
                 address: jThis.find('[data-testid=address]').text(),
                 image,
             };
