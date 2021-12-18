@@ -75,22 +75,33 @@ const handleListPage = async (page, input, request, session, requestQueue, sortB
         await enqueueDetailPages(page, input, requestQueue);
     }
 
+    const isStartPage = label !== 'page';
+    if (isStartPage) {
+        await handleStartPage(page, useFilters, input, request, requestQueue, state);
+    }
+};
+
+const handleStartPage = async (page, useFilters, input, request, requestQueue, state) => {
     const totalResults = await getTotalListingsCount(page);
     const shouldUseFilters = useFilters && totalResults > MAX_RESULTS_LIMIT;
 
-    /* Enqueue all pagination pages from start page when shouldUseFilters is false.
-       With useFilters set, we enqueue all combinations of available filters and for each
-       combination, we only scrape first page if there are more than MAX_RESULTS_LIMIT results
-       to avoid pagination pages overload. At some point, we surely get under MAX_RESULTS_LIMIT
-       results and then we enqueue pagination links instead of more filtered pages.
+    /*  If filtering is enabled, enqueue filtered pages. Filter pages enqueuing is placed
+        before pagination pages enqueuing on purpose - setting new filter restriction displays
+        differents results on the first listing page so we will be getting new dataset items faster
+        at the beginning.
     */
-    if (!shouldUseFilters && label !== 'page') {
-        await enqueuePaginationPages(page, input, requestQueue);
-    }
-
-    // If filtering is enabled, enqueue filtered pages.
     if (shouldUseFilters) {
         await enqueueFilteredPages(page, request, requestQueue, state);
+    }
+
+    /*  Enqueue all pagination pages from start page when shouldUseFilters is false.
+        With useFilters set, we enqueue all combinations of available filters and for each
+        combination, we only scrape first page if there are more than MAX_RESULTS_LIMIT results
+        to avoid pagination pages overload. At some point, we surely get under MAX_RESULTS_LIMIT
+        results and then we enqueue pagination links instead of more filtered pages.
+    */
+    if (!shouldUseFilters) {
+        await enqueuePaginationPages(page, input, requestQueue);
     }
 };
 
