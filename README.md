@@ -76,18 +76,12 @@ Must be one of the following:
     "Luxury tents"
 ]
 ```
-* `minMaxPrice` min-max price range, it will use filters, so cannot be combined with `useFilters`.
-Must be one of the following:
-```json
-[
-    "none",
-    "0-50",
-    "50-100",
-    "100-150",
-    "150-200",
-    "200+"
-]
-```
+* `minMaxPrice` min-max price range, it will filter the results, so it cannot be combined with `useFilters`.
+You can use one of the following formats (or exclude the attribute from INPUT completely):
+`none`, `100-150`, `200+`. Note that the actor sets custom price filter so you can provide arbitrary price range
+and you don't need to limit yourself on the given ranges from booking.com website. You can even specify more specific
+price range than booking.com offers in price filters (e.g. Booking has price category 500+ but you can set values
+such as 520-550, 650-680, 700+, ...). The values apply to the currency provided as another INPUT attribute.
 * `proxyConfig` defines Apify proxy configuration and default group is SHADER, it should respect this format:
 ```json
 "proxyConfig": {
@@ -98,7 +92,7 @@ Must be one of the following:
 }
 ```
 * `sortBy` sets a hotel attribute by which the results will be ordered, must be one of the following.
-```json
+```javascript
 [
     "upsort_bh",                 // Show homes first
     "price",                     // Price (lowest first)
@@ -123,7 +117,7 @@ will depend on the `simple` attribute. If it's `true`, the page will be scraped,
 detail pages will be added to the queue and scraped afterwards.
 The `startUrls` attribute should contain an array of URLs as follows:
 
-```json
+```javascript
 {
     "startUrls": [
         "https://www.booking.com/hotel/fr/ariane-montparnasse.en-gb.html",
@@ -157,7 +151,7 @@ In case of using the `simple` INPUT attribute, an example output for a single ho
 ```
 
 If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is further reduced as `price`,
-`currency`, `roomType` and `persons` can't be scraped from the listing page. The output follows this format:
+`currency`, `roomType` and `persons` cannot be scraped from the listing page. The output follows this format:
 
 ```json
 {
@@ -200,8 +194,7 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
   "images": [
     "https://cf.bstatic.com/xdata/images/hotel/max1024x768/303439628.jpg?k=7f001a9cbf85160050efc5437e3ba5adac7b23db47a5a2dbb8c10640b4e7b042&o=&hp=1",
     "https://cf.bstatic.com/xdata/images/hotel/max1024x768/202101343.jpg?k=afd7a3e75f1f758b4137f9605645e7e23d42eadc9e18137d3c435d628b11c46d&o=&hp=1",
-    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/183313960.jpg?k=fb7411388bf11432cf7613ab3318d5b5f1d767741f18095d034d4f430252a841&o=&hp=1",
-    ...
+    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/183313960.jpg?k=fb7411388bf11432cf7613ab3318d5b5f1d767741f18095d034d4f430252a841&o=&hp=1"
   ],
   "rooms": [
     {
@@ -217,14 +210,12 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
         "Terrace",
         "Flat-screen TV",
         "Air conditioning",
-        "Private bathroom",
-        ...
+        "Private bathroom"
       ],
       "conditions": [
         "Non-refundable"
       ]
-    },
-    ...
+    }
   ]
 }
 ```
