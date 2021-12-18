@@ -58,7 +58,7 @@ Input is a JSON object with the following properties:
 * `language` preferred language code to be set on the site.
 * `propertyType` type of property to search, it will use filters, so cannot be combined with `useFilters`.
 Must be one of the following:
-```javascript
+```json
 [
     "none",
     "Hotels",
@@ -78,7 +78,7 @@ Must be one of the following:
 ```
 * `minMaxPrice` min-max price range, it will use filters, so cannot be combined with `useFilters`.
 Must be one of the following:
-```javascript
+```json
 [
     "none",
     "0-50",
@@ -89,7 +89,7 @@ Must be one of the following:
 ]
 ```
 * `proxyConfig` defines Apify proxy configuration and default group is SHADER, it should respect this format:
-```javascript
+```json
 "proxyConfig": {
     "useApifyProxy": true,
     "apifyProxyGroups": [
@@ -98,7 +98,7 @@ Must be one of the following:
 }
 ```
 * `sortBy` sets a hotel attribute by which the results will be ordered, must be one of the following.
-```javascript
+```json
 [
     "upsort_bh",                 // Show homes first
     "price",                     // Price (lowest first)
@@ -123,7 +123,7 @@ will depend on the `simple` attribute. If it's `true`, the page will be scraped,
 detail pages will be added to the queue and scraped afterwards.
 The `startUrls` attribute should contain an array of URLs as follows:
 
-```javascript
+```json
 {
     "startUrls": [
         "https://www.booking.com/hotel/fr/ariane-montparnasse.en-gb.html",
@@ -141,25 +141,39 @@ The `startUrls` attribute should contain an array of URLs as follows:
 
 In case of using the `simple` INPUT attribute, an example output for a single hotel can look like this:
 
-```javascript
+```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
   "name": "Centrum Apartments Old Town",
+  "address": "Prague 01, Prague",
   "rating": 10,
   "reviews": 7,
   "stars": 4,
   "price": 86,
   "currency": "€",
   "roomType": "Deluxe Three-Bedroom Apartment with Terrace",
-  "persons": 4,
+  "persons": 4
+}
+```
+
+If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is further reduced as `price`,
+`currency`, `roomType` and `persons` can't be scraped from the listing page. The output follows this format:
+
+```json
+{
+  "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
+  "name": "Centrum Apartments Old Town",
   "address": "Prague 01, Prague",
+  "rating": 10,
+  "reviews": 7,
+  "stars": 4
 }
 ```
 
 Otherwise the output will be much more comprehensive, especially the `rooms` array, which will however
 contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
 
-```javascript
+```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
   "name": "Centrum Apartments Old Town",
