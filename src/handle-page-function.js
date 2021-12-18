@@ -6,6 +6,8 @@ const {
     enqueueFilterLinks, enqueueAllPages,
 } = require('./util');
 
+const { MAX_RESULTS_LIMIT } = require('./consts');
+
 const { log } = Apify.utils;
 
 module.exports = async ({ page, request, session, extendOutputFunction, requestQueue, input,
@@ -58,7 +60,7 @@ const handleListPage = async (page, input, request, session, requestQueue, sortB
     // Check if the page was opened through working proxy.
     validateProxy(page, session, startUrls, sortBy);
 
-    const items = await getResultsCount(page);
+    const items = await getCurrentPageResultsCount(page);
     if (items.length === 0) {
         log.info('Found no result. Skipping...');
         return;
@@ -73,19 +75,22 @@ const handleListPage = async (page, input, request, session, requestQueue, sortB
         await enqueueDetailPages(page, input, requestQueue);
     }
 
-    // If filtering is enabled, enqueue filtered pages.
-    if (useFilters) {
-        await enqueueFilteredPages(page, request, requestQueue, state);
+    const totalResults = await getTotalListingsCount(page);
+    const shouldUseFilters = useFilters && totalResults > MAX_RESULTS_LIMIT;
+
+    /* Enqueue all pagination pages from start page when shouldUseFilters is false.
+       With useFilters set, we enqueue all combinations of available filters and for each
+       combination, we only scrape first page if there are more than MAX_RESULTS_LIMIT results
+       to avoid pagination pages overload. At some point, we surely get under MAX_RESULTS_LIMIT
+       results and then we enqueue pagination links instead of more filtered pages.
+    */
+    if (!shouldUseFilters && label !== 'page') {
+        await enqueuePaginationPages(page, input, requestQueue);
     }
 
-    /* Enqueue all pagination pages from start page when useFilters is false.
-       With useFilters set, we enqueue all combinations of available filters and for each
-       combination, we scrape first page only to avoid pagination pages overload.
-       We should still get most of the results - the more specific filter combination,
-       the fewer results it yields.
-    */
-    if (!useFilters && label !== 'page') {
-        await enqueuePaginationPages(page, input, requestQueue);
+    // If filtering is enabled, enqueue filtered pages.
+    if (shouldUseFilters) {
+        await enqueueFilteredPages(page, request, requestQueue, state);
     }
 };
 
@@ -164,9 +169,8 @@ const enqueueDetailPages = async (page, input, requestQueue) => {
 const waitForListPageToLoad = async (page) => {
     const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
     await page.waitForSelector(countSelector, { timeout: 60000 });
-    const heading = await page.$(countSelector);
 
-    const headingText = heading ? (await getAttribute(heading, 'textContent')).trim() : 'No heading found.';
+    const headingText = await getHeadingText(page, countSelector);
     log.info(headingText);
 };
 
@@ -178,6 +182,13 @@ const waitForDetailPageToLoad = async (page) => {
     }
 };
 
+const getHeadingText = async (page) => {
+    const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
+    const heading = await page.$(countSelector);
+
+    return heading ? (await getAttribute(heading, 'textContent')).trim() : 'No heading found.';
+};
+
 const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     const pageUrl = page.url();
 
@@ -187,11 +198,17 @@ const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     }
 };
 
-const getResultsCount = async (page) => {
+const getCurrentPageResultsCount = async (page) => {
     // eslint-disable-next-line max-len
     const items = await page.$$('.sr_property_block.sr_item:not(.soldout_property), [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"]');
 
     return items.length;
+};
+
+const getTotalListingsCount = async (page) => {
+    const heading = await getHeadingText(page);
+
+    return parseInt(heading.replace(/[^0-9]/g, ''), 10);
 };
 
 const extractListPageResults = async (page, input, state) => {
