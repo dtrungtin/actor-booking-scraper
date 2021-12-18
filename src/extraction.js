@@ -144,6 +144,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const description = await page.$('#property_description_content');
     const descriptionText = description ? await getAttribute(description, 'textContent') : null;
     const hType = await page.$('.hp__hotel-type-badge');
+    const pType = await page.$('.bh-property-type');
     const bFast = await page.$('.ph-item-copy-breakfast-option');
     const starTitle = await page.evaluate(() => {
         const el = document.querySelector('.bui-rating');
@@ -163,11 +164,14 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const price = rooms.length > 0 ? rooms[0].price : null;
     const images = await page.evaluate(() => { return window.booking.env.hotelPhotos.map((photo) => photo.large_url); });
 
+    const homeType = hType ? await getAttribute(hType, 'textContent') : null;
+    const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
+
     return {
         order: userData.order,
         url: addUrlParameters(page.url().split('?')[0], input),
         name: nameText ? nameText[nameText.length - 1].trim() : null,
-        type: hType ? await getAttribute(hType, 'textContent') : null,
+        type: homeType || propertyType,
         description: descriptionText || null,
         stars,
         price,
