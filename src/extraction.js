@@ -115,9 +115,9 @@ const extractSimpleRoomsInfo = () => {
         return multiplierValue ? multiplierValue * roomPersons : roomPersons;
     });
 
-    for (let index = 0; index < rooms.length; index++) {
-        const room = rooms[index];
-        room.persons = persons[index];
+    for (let i = 0; i < rooms.length; i++) {
+        const room = rooms[i];
+        room.persons = persons[i];
     }
 
     return rooms;
@@ -222,13 +222,13 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
     let finished = 0;
 
     // Iterate all items
-    items.each(function (index, sr) {
+    items.each(function (_i, sr) {
         const jThis = $(this);
-        const n1 = jThis.find('.score_from_number_of_reviews').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
-        const n2 = jThis.find('.review-score-widget__subtext').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
-        const n3 = jThis.find('.bui-review-score__text').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
-        const n4 = jThis.find('[data-testid="review-score"] > div:nth-child(2) > div:nth-child(2)').text();
-        const nReviews = n1 || n2 || n3 || n4;
+        const reviewsFirstOpt = jThis.find('.score_from_number_of_reviews').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
+        const reviewsSecondOpt = jThis.find('.review-score-widget__subtext').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
+        const reviewsThirdOpt = jThis.find('.bui-review-score__text').text().replace(/(\s|\.|,)+/g, '').match(/\d+/);
+        const reviewsFourthOpt = jThis.find('[data-testid="review-score"] > div:nth-child(2) > div:nth-child(2)').text();
+        const reviewsCountMatches = reviewsFirstOpt || reviewsSecondOpt || reviewsThirdOpt || reviewsFourthOpt;
 
         ++started;
         sr.scrollIntoView();
@@ -242,21 +242,21 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             /* eslint-disable */
             const origin = window.location.origin;
             /* eslint-enable */
-            const rl1 = jThis.find('.room_link span').eq(0).contents();
+            const roomLinkFirstOpt = jThis.find('.room_link span').eq(0).contents();
             // eslint-disable-next-line max-len
-            const rl2 = jThis.find('.room_link strong').length > 0 ? jThis.find('.room_link strong') : jThis.find('[data-testid="recommended-units"] [role=link]');
+            const roomLinkSecondOpt = jThis.find('.room_link strong').length > 0 ? jThis.find('.room_link strong') : jThis.find('[data-testid="recommended-units"] [role=link]');
 
             // if more prices are extracted, first one is the original, second one is current discount
             const prices = getPrices();
-            const prtxt = prices.length > 1 ? prices.eq(1).text() : prices.eq(0).text()
+            const pricesText = prices.length > 1 ? prices.eq(1).text() : prices.eq(0).text()
                 .replace(/,|\s/g, '');
-            const pr = prtxt.match(/[\d.]+/);
-            const pc = prtxt.match(/[^\d.]+/);
+            const priceValue = pricesText.match(/[\d.]+/);
+            const priceCurrency = pricesText.match(/[^\d.]+/);
 
             const taxAndFeeText = jThis.find('.prd-taxes-and-fees-under-price').eq(0).text().trim();
             const taxAndFee = taxAndFeeText.match(/\d+/);
 
-            const rat = $(sr).attr('data-score') || jThis.find('[data-testid="review-score"] > div:first-child').text();
+            const reviewScore = $(sr).attr('data-score') || jThis.find('[data-testid="review-score"] > div:first-child').text();
 
             const starAttr = jThis.find('.bui-rating').attr('aria-label');
             const stars = starAttr ? starAttr.match(/\d/) : [jThis.find('[data-testid="rating-stars"] span').length];
@@ -271,11 +271,11 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
             let url = hotelLink ? hotelLink.replace(/\n/g, '') : jThis.find('a').attr('href').replace(/\n/g, '');
             url = url.includes(origin) ? url : `${origin}${url}`;
 
-            const textRoomType = rl2.length > 0 ? rl2.text().trim() : rl1.eq(0).text().trim();
+            const textRoomType = roomLinkSecondOpt.length > 0 ? roomLinkSecondOpt.text().trim() : roomLinkFirstOpt.eq(0).text().trim();
 
             const optionalProperties = {
-                price: pr ? (parseFloat(pr[0]) + (taxAndFee ? parseFloat(taxAndFee[0]) : 0)) : null,
-                currency: pc ? pc[0].trim() : null,
+                price: priceValue ? (parseFloat(priceValue[0]) + (taxAndFee ? parseFloat(taxAndFee[0]) : 0)) : null,
+                currency: priceCurrency ? priceCurrency[0].trim() : null,
                 roomType: textRoomType || null,
                 persons: nightsPersonsSplits.length > 1 ? parseInt(nightsPersonsSplits[1], 10) : null,
             };
@@ -288,8 +288,8 @@ module.exports.listPageFunction = (input) => new Promise((resolve) => {
                 url: url.split('?')[0],
                 name: $(sr).find('.sr-hotel__name, [data-testid="title"]').text().trim(),
                 address: jThis.find('[data-testid="address"]').text(),
-                rating: rat ? parseFloat(rat.replace(',', '.')) : null,
-                reviews: nReviews ? parseInt(nReviews[0], 10) : null,
+                rating: reviewScore ? parseFloat(reviewScore.replace(',', '.')) : null,
+                reviews: reviewsCountMatches ? parseInt(reviewsCountMatches[0], 10) : null,
                 stars: starsCount !== 0 ? starsCount : null,
                 ...extraProperties,
                 image,
