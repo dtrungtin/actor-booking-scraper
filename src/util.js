@@ -2,7 +2,7 @@ const Apify = require('apify');
 const moment = require('moment');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 
-const { PRICE_LABELS, MAX_OFFSET, DEFAULT_MIN_SCORE } = require('./consts');
+const { MAX_OFFSET, DATE_FORMAT, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -21,30 +21,6 @@ const getAttribute = async (element, attr, fallback = '') => {
     }
 };
 module.exports.getAttribute = getAttribute;
-
-/**
- * Adds links from a page to the RequestQueue.
- * @param {Puppeteer.Page} page - Puppeteer Page object containing the link elements.
- * @param {Apify.RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {string} selector - A selector representing the links.
- * @param {Function} condition - Function to check if the link is to be added.
- * @param {string} label - A label for the added requests.
- * @param {Function} urlMod - Function for modifying the URL.
- * @param {Function} keyMod - Function for generating uniqueKey from the link ElementHandle.
- */
-module.exports.enqueueLinks = async (page, requestQueue, selector, condition, label, urlMod, keyMod) => {
-    const links = await page.$$(selector);
-    for (const link of links) {
-        const href = await getAttribute(link, 'href');
-        if (href && (!condition || await condition(link))) {
-            await requestQueue.addRequest({
-                userData: { label },
-                url: urlMod ? urlMod(href) : href,
-                uniqueKey: keyMod ? (await keyMod(link)) : href,
-            });
-        }
-    }
-};
 
 /**
  * Adds URL parameters to a Booking.com Hotel Detail URL (timespan, language and currency).
@@ -124,11 +100,25 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
     return url;
 };
 
-const addMinMaxPriceParameter = (minMaxPrice, queryParameters) => {
-    const minMaxPriceIndex = PRICE_LABELS.indexOf(minMaxPrice);
+const addPropertyTypeParameter = (propertyType, queryParameters) => {
+    const setParameter = propertyType && propertyType !== 'none';
 
-    if (minMaxPriceIndex !== -1) {
-        queryParameters.push({ isSet: minMaxPrice, name: 'pri', value: minMaxPriceIndex + 1 });
+    if (setParameter && !PROPERTY_TYPE_IDS[propertyType]) {
+        log.info(`Unknown property type '${propertyType}'. Valid values are: ${PROPERTY_TYPE_IDS}`);
+    }
+
+    queryParameters.push({ isSet: setParameter, name: 'ht_id', value: PROPERTY_TYPE_IDS[propertyType] });
+};
+
+const addMinMaxPriceParameter = (minMaxPrice, currency, queryParameters) => {
+    const setParameter = minMaxPrice && minMaxPrice !== 'none';
+
+    if (setParameter) {
+        // handles "200+" price format
+        const minMaxParsed = minMaxPrice.includes('+') ? `${parseInt(minMaxPrice, 10)}-max` : minMaxPrice;
+
+        // sets min max price using custom filter rather than pre-defined price category (categories have different ranges for some currencies)
+        queryParameters.push({ isSet: setParameter, name: 'price', value: `${currency}-${minMaxParsed}-1` });
     }
 };
 
@@ -143,7 +133,7 @@ const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
 };
 
 const addUrlParametersForHotelListingUrl = (url, input) => {
-    const { currency, language, adults, children, rooms, minScore, minMaxPrice, checkIn, checkOut } = input;
+    const { currency, language, adults, children, rooms, minScore, minMaxPrice, propertyType, checkIn, checkOut } = input;
 
     const extendedUrl = new URL(url);
 
@@ -158,12 +148,17 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
         { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
     ];
 
-    addMinMaxPriceParameter(minMaxPrice, queryParameters);
+    const currencyValue = extendedUrl.searchParams.get('selected_currency') || 'USD';
+
+    addPropertyTypeParameter(propertyType, queryParameters);
+    addMinMaxPriceParameter(minMaxPrice, currencyValue, queryParameters);
     addCheckInCheckOutParameters(checkIn, checkOut, queryParameters);
 
     queryParameters.forEach((parameter) => {
         const { isSet, name, value } = parameter;
-        if (isSet && !extendedUrl.searchParams.has(name)) {
+        if (isSet && !extendedUrl.searchParams.has(name) && !url.includes(`nflt=${name}`)) {
+            /* we need to check for url.includes besides searchParams.has because if startUrl is specified,
+            it might use nflt=param_name which can not be checked by searchParams.has effectively due to URI encoding */
             extendedUrl.searchParams.set(name, value);
         }
     });
@@ -190,7 +185,7 @@ module.exports.addUrlParameters = addUrlParameters;
  * Creates a function to make sure the URL contains all necessary attributes from INPUT.
  * @param {string} s - The URL attribute separator (& or ;).
  */
-const fixUrl = (s, input) => (href) => {
+module.exports.fixUrl = (s, input) => (href) => {
     href = href.replace(/#([a-zA-Z_]+)/g, '');
     if (input.language && href.indexOf('lang') < 0) {
         const lng = input.language.replace('_', '-');
@@ -203,99 +198,6 @@ const fixUrl = (s, input) => (href) => {
     }
     return href.replace(/&{n,}/g, '&').replace('?&', '?');
 };
-module.exports.fixUrl = fixUrl;
-
-/**
- * Checks if page has some criteria filtering enabled.
- * @param {Page} page - The page to be checked.
- */
-module.exports.isFiltered = (page) => page.$('.filterelement.active');
-
-module.exports.isPropertyTypeSet = async (page, input) => {
-    if (input.propertyType !== 'none') {
-        const set = await page.evaluate((propertyType) => {
-            const filters = Array.from(document.querySelectorAll('.filterelement'));
-            for (const filter of filters) {
-                const label = filter.querySelector('.filter_label');
-                if (label) {
-                    const fText = label.textContent.trim();
-                    if (fText === propertyType) {
-                        const cls = filter.className;
-                        if (!cls.includes('active')) {
-                            return false;
-                        }
-
-                        return true;
-                    }
-                }
-            }
-
-            return true;
-        }, input.propertyType);
-
-        return set;
-    }
-
-    return true;
-};
-
-module.exports.setPropertyType = async (page, input, requestQueue) => {
-    log.info('enqueuing property type page...');
-    const filters = await page.$$('.filterelement');
-    const urlMod = fixUrl('&', input);
-    for (const filter of filters) {
-        const label = await filter.$('.filter_label');
-        const fText = await getAttribute(label, 'textContent');
-        if (fText === input.propertyType) {
-            log.info(`Using filter 1: ${fText}`);
-            const href = await getAttribute(filter, 'href');
-            await requestQueue.addRequest({
-                userData: { label: 'page' },
-                url: urlMod(href),
-                uniqueKey: `${fText}_0`,
-            });
-
-            break;
-        }
-    }
-};
-
-module.exports.isMinMaxPriceSet = async (page, input) => {
-    if (input.minMaxPrice !== 'none') {
-        const filterOptions = await page.$$('.filteroptions');
-        if (filterOptions && filterOptions.length !== 0) {
-            const fPrices = await filterOptions[0].$$('.filterelement');
-            const index = PRICE_LABELS.indexOf(input.minMaxPrice);
-            const cls = await getAttribute(fPrices[index], 'className');
-            return cls.includes('active');
-        }
-    }
-    return true;
-};
-
-module.exports.setMinMaxPrice = async (page, input, requestQueue, crawler) => {
-    log.info('enqueuing min-max price page...');
-    const urlMod = fixUrl('&', input);
-    const fPrices = await (await page.$$('.filteroptions'))[0].$$('.filterelement');
-    const index = PRICE_LABELS.indexOf(input.minMaxPrice);
-    const label = await (fPrices[index]).$('.filter_label');
-    const fText = await getAttribute(label, 'textContent');
-    const fLabel = fText.replace(/[^\d-+]/g, '');
-    if (!PRICE_LABELS.includes(fLabel)) {
-        log.error(`Cannot find price range filter: ${input.minMaxPrice}`);
-        crawler.autoscaledPool.abort();
-    }
-
-    log.info(`Using filter: ${fText}`);
-    const href = await getAttribute(fPrices[index], 'href');
-    await requestQueue.addRequest({
-        userData: { label: 'page' },
-        url: urlMod(href),
-        uniqueKey: `${fText}_${0}`,
-    });
-};
-
-const DATE_FORMAT = 'YYYY-MM-DD';
 
 /**
  * @param {string} date
@@ -387,4 +289,131 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
     }
 };
 
+module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, state) => {
+    const { page, unchecked, attribute } = extractionInfo;
+    const { label, baseUrl } = urlInfo;
+    const { enqueuedUrls } = state;
+
+    const url = new URL(baseUrl);
+
+    const uncheckedElements = await page.$$(unchecked);
+    const uncheckedFilters = await getFilterNameValues(uncheckedElements, attribute);
+
+    const validFilters = getValidFilters(uncheckedFilters);
+    const filtersToEnqueue = getFiltersToEnqueue(validFilters, enqueuedUrls, url);
+    const newFiltersCount = filtersToEnqueue.length;
+
+    if (newFiltersCount) {
+        log.info(`enqueuing pages with ${filtersToEnqueue.length} new filters set...`);
+    }
+
+    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls);
+};
+
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
+
+const getFilterNameValues = async (elements, attribute) => {
+    const nameValues = {};
+
+    for (const element of elements) {
+        const filterValue = await getAttribute(element, attribute);
+
+        const [name, value] = filterValue.split('=');
+        nameValues[name] = nameValues[name] || [];
+        nameValues[name].push(value);
+    }
+
+    return nameValues;
+};
+
+const getValidFilters = (uncheckedFilters) => {
+    const validFilters = { ...uncheckedFilters };
+
+    /* Exclude review_score from filter enqueuing. It has a strict value for each run that can not be changed
+    (even if it's unspecified in the input - default value is DEFAULT_MIN_SCORE). */
+    delete validFilters.review_score;
+
+    // Invalid filter that is scraped among other checkboxes.
+    delete validFilters['1'];
+
+    return validFilters;
+};
+
+const getFiltersToEnqueue = (filters, enqueuedUrls, url) => {
+    const filtersToEnqueue = [];
+
+    Object.keys(filters).forEach((name) => {
+        const values = filters[name].filter((value) => {
+            // remove value which is included with the same parameter in current url
+            return value && !url.search.includes(`${name}=${value}`);
+        });
+
+        const isFilterEnqueued = isFilterAlreadyEnqueued(name, url, enqueuedUrls);
+
+        if (!isFilterEnqueued) {
+            filtersToEnqueue.push({ name, values });
+        }
+    });
+
+    return filtersToEnqueue;
+};
+
+const isFilterAlreadyEnqueued = (name, url, enqueuedUrls) => {
+    const updatedUrl = new URL(url);
+    updatedUrl.searchParams.set(name, 'example');
+
+    for (const enqueuedUrl of enqueuedUrls) {
+        if (haveSameQueryParamNames(updatedUrl, enqueuedUrl)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const haveSameQueryParamNames = (firstUrl, secondUrl) => {
+    if (firstUrl.pathname !== secondUrl.pathname) {
+        return false;
+    }
+
+    /* Cross validation with matching firstUrl -> secondUrl parameters
+       as well as secondUrl -> firstUrl parameters. The length of searchParams
+       iterable can not be checked directly without looping through it.
+    */
+
+    for (const key of firstUrl.searchParams.keys()) {
+        if (!secondUrl.searchParams.has(key)) {
+            return false;
+        }
+    }
+
+    for (const key of secondUrl.searchParams.keys()) {
+        if (!firstUrl.searchParams.has(key)) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
+const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls) => {
+    for (const filter of filters) {
+        const { name, values } = filter;
+
+        // Enqueue filter with all possible values.
+        for (const value of values) {
+            const url = new URL(baseUrl);
+            url.searchParams.set(name, value);
+
+            // Check that url with the exact same filters and values doesn't exist already.
+            if (!enqueuedUrls.includes(url)) {
+                enqueuedUrls.push(url);
+
+                await requestQueue.addRequest({
+                    url: url.toString(),
+                    userData: { label },
+                });
+            }
+        }
+    }
+};

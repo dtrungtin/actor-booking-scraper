@@ -346,17 +346,9 @@
         "minMaxPrice": {
             "title": "Price range",
             "type": "string",
-            "description": "Minimum-maximum price range",
-            "default": "none",
-            "enum": ["none", "0-50", "50-100", "100-150", "150-200", "200+"],
-            "enumTitles": [
-                "none",
-                "0 - € 50",
-                "€ 50 - € 100",
-                "€ 100 - € 150",
-                "€ 150 - € 200",
-                "€ 200 +"
-            ]
+            "description": "Minimum-maximum price range in min-max or min+ format (such as 100-150, 200-225, 300+, ...)",
+            "editor": "textfield",
+            "prefill": "100-150"
         },
         "proxyConfig": {
             "title": "Proxy Configuration",

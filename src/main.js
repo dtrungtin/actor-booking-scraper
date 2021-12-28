@@ -24,7 +24,7 @@ Apify.main(async () => {
     const errorSnapshotter = new ErrorSnapshotter();
     await errorSnapshotter.initialize(Apify.events);
 
-    const state = await Apify.getValue('STATE') || { crawled: {} };
+    const state = await Apify.getValue('STATE') || { crawled: {}, enqueuedUrls: [] };
 
     Apify.events.on('persistState', async () => {
         await Apify.setValue('STATE', state);
@@ -34,9 +34,8 @@ Apify.main(async () => {
     const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
     const requestList = await Apify.openRequestList('LIST', requestSources);
     const proxyConfiguration = (await Apify.createProxyConfiguration(proxyConfig)) || undefined;
-    const globalContext = {
-        requestQueue, startUrls, input, extendOutputFunction, sortBy, maxPages, state,
-    };
+
+    const globalContext = { requestQueue, input, extendOutputFunction, sortBy, state };
 
     const crawler = new Apify.PuppeteerCrawler({
         requestList,

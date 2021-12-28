@@ -23,11 +23,11 @@ module.exports.validateInput = (input) => {
             throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
         }
     }
-    if (input.useFilters && input.propertyType !== 'none') {
+    if (input.useFilters && input.propertyType && input.propertyType !== 'none') {
         throw new Error('WRONG INPUT: Property type and filters cannot be used at the same time.');
     }
 
-    if (input.useFilters && input.minMaxPrice !== 'none') {
+    if (input.useFilters && input.minMaxPrice && input.minMaxPrice !== 'none') {
         throw new Error('WRONG INPUT: Price range and filters cannot be used at the same time.');
     }
 
