@@ -210,7 +210,13 @@ module.exports.checkDate = (date) => {
             throw new Error(`WRONG INPUT: Date should be in format ${DATE_FORMAT}`);
         }
 
-        if (dateMatch.isBefore(moment())) {
+        /**
+         * We can only compare moments as dates since there's no way to specify time in the input.
+         */
+        const specifiedDate = convertMomentToDate(dateMatch);
+        const todayDate = convertMomentToDate(moment());
+
+        if (specifiedDate < todayDate) {
             throw new Error(`WRONG INPUT: You can't use a date in the past: ${dateMatch.format(DATE_FORMAT)}`);
         }
 
@@ -228,7 +234,7 @@ module.exports.checkDate = (date) => {
  * @param {null | moment.Moment} checkIn
  * @param {null | moment.Moment} checkOut
  */
-exports.checkDateGap = (checkIn, checkOut) => {
+module.exports.checkDateGap = (checkIn, checkOut) => {
     if (checkIn && checkOut) {
         if (!checkOut.isSameOrAfter(checkIn)) {
             // eslint-disable-next-line max-len
@@ -324,6 +330,15 @@ const getFilterNameValues = async (elements, attribute) => {
     }
 
     return nameValues;
+};
+
+/**
+ *
+ * @param {moment.Moment} time
+ * @returns {Date}
+ */
+const convertMomentToDate = (time) => {
+    return time.toDate().setHours(0, 0, 0, 0);
 };
 
 const getValidFilters = (uncheckedFilters) => {
