@@ -9,30 +9,39 @@ const { log } = Apify.utils;
  * @param {Object} input - The Actor input data object.
  */
 module.exports.validateInput = (input) => {
-    if (!input.search && !input.startUrls) {
+    const { search, startUrls, proxyConfig, propertyType, useFilters, minMaxPrice, minScore } = input;
+
+    if (!search && !startUrls) {
         throw new Error('WRONG INPUT: Missing "search" or "startUrls" attribute in INPUT!');
-    } else if (input.search && input.startUrls && input.search.trim().length > 0 && input.startUrls.length > 0) {
-        log.warning(`Start URLs were provided. Will not use provided search input: ${input.search}.`);
+    } else if (search && startUrls && search.trim().length > 0 && startUrls.length > 0) {
+        log.warning(`Start URLs were provided. Will not use provided search input: ${search}.`);
     }
     // On Apify platform, proxy is mandatory
     if (Apify.isAtHome()) {
-        const usesApifyProxy = input.proxyConfig && input.proxyConfig.useApifyProxy;
-        const usesCustomProxies = input.proxyConfig
-            && Array.isArray(input.proxyConfig.proxyUrls) && input.proxyConfig.proxyUrls.length > 0;
+        const usesApifyProxy = proxyConfig && proxyConfig.useApifyProxy;
+        const usesCustomProxies = proxyConfig
+            && Array.isArray(proxyConfig.proxyUrls) && proxyConfig.proxyUrls.length > 0;
         if (!(usesApifyProxy || usesCustomProxies)) {
             throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
         }
     }
-    if (input.useFilters && input.propertyType && input.propertyType !== 'none') {
+    if (useFilters && propertyType && propertyType !== 'none') {
         throw new Error('WRONG INPUT: Property type and filters cannot be used at the same time.');
     }
 
-    if (input.useFilters && input.minMaxPrice && input.minMaxPrice !== 'none') {
+    if (useFilters && minMaxPrice && minMaxPrice !== 'none') {
         throw new Error('WRONG INPUT: Price range and filters cannot be used at the same time.');
     }
 
-    if (input.startUrls && !Array.isArray(input.startUrls)) {
+    if (startUrls && !Array.isArray(startUrls)) {
         throw new Error('WRONG INPUT: startUrls must an array!');
+    }
+
+    if (minScore) {
+        const parsedMinScore = parseFloat(minScore);
+        if (Number.isNaN(parsedMinScore) || parsedMinScore < 0 || parsedMinScore > 10) {
+            throw new Error('WRONG INPUT: minScore must be a number between 0 and 10!');
+        }
     }
 
     const daysInterval = checkDateGap(checkDate(input.checkIn), checkDate(input.checkOut));

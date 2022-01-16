@@ -62,8 +62,8 @@ const handleListPage = async ({ page, request, session, requestQueue }, globalCo
     // Check if the page was opened through working proxy.
     validateProxy(page, session, startUrls, sortBy);
 
-    const items = await getCurrentPageResultsCount(page);
-    if (items.length === 0) {
+    const itemsCount = await getCurrentPageResultsCount(page);
+    if (itemsCount === 0) {
         log.info('Found no result. Skipping...');
         return;
     }
@@ -86,7 +86,9 @@ const handleListPage = async ({ page, request, session, requestQueue }, globalCo
 const handleStartPage = async ({ page, request, requestQueue }, globalContext) => {
     const { input, remainingPages } = globalContext;
     const { useFilters } = input;
-    const usingFilters = await shouldUseFilters(page, useFilters, remainingPages);
+
+    const totalResults = await getTotalListingsCount(page);
+    const usingFilters = shouldUseFilters(totalResults, useFilters, remainingPages);
 
     /**
      * If filtering is enabled, enqueue filtered pages. Filter pages enqueuing is placed
@@ -212,8 +214,7 @@ const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     }
 };
 
-const shouldUseFilters = async (page, useFilters, remainingPages) => {
-    const totalResults = await getTotalListingsCount(page);
+const shouldUseFilters = (totalResults, useFilters, remainingPages) => {
     const maxResults = MAX_PAGES * RESULTS_PER_PAGE;
     const requiresPagesOverLimit = remainingPages > MAX_PAGES;
 
