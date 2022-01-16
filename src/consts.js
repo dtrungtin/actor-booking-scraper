@@ -1,7 +1,7 @@
 module.exports = {
     USER_AGENT: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
-    MAX_OFFSET: 5000, // to ensure that scraper does not run infinitely
-    MAX_RESULTS_LIMIT: 1000,
+    MAX_PAGES: 40,
+    RESULTS_PER_PAGE: 25,
     DATE_FORMAT: 'YYYY-MM-DD',
     DEFAULT_MIN_SCORE: 84,
     PROPERTY_TYPE_IDS: {
