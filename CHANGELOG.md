@@ -1,5 +1,3 @@
-
-
 ## 2022-1-10
 
 - Fixed rejection of current date in `checkIn` and `checkOut` fields
