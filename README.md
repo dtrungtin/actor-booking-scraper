@@ -1,24 +1,42 @@
-# actor-booking-scraper
-
-Apify actor for extracting data about hotels from Booking.com.
-
-Booking.com provides various types of accommodation all around the world. The user interface
-is quite friendly for a human user, however to get the data in a machine processable format
-is not a simple task, since there is no official Booking.com API. This is where this new Apify
-actor comes in handy.
-
-This actor extracts hotel data from Booking.com, it can either extract directly from
-the hotel list page or navigate to the detail page to get more detailed information.
-The results can be ordered by any criteria supported by Booking.com.
-
-Since Booking.com allows only 1000 search results, in case you need to download more,
-you will need to utilize the `useFilters` attribute to tell the crawler to enqueue all the criteria
-filtered pages. This will overcome the limit, but will significantly increase the crawling time.
-
+# Features
+ 
+Our free Booking Scraper allows you to scrape hotel data from Booking.com, one of the best-known platforms for hotels, apartments, resorts, villas, and other types of accommodation worldwide.
+ 
+Our Booking.com Scraper is capable of extracting valuable data such as:
+ 
+* Hotel names and locations
+ 
+* Availability
+ 
+* Check-in and check-out times
+ 
+* Room types
+ 
+* Prices
+ 
+* Reviews
+ 
+* Conditions
+ 
+* Promotions
+ 
+The Booking.com API interface is quite user-friendly, but getting that data in machine-processable format is no easy task. Booking utilizes many anti-scraping mechanisms, one of them being that it will only display **a maximum of 1000 results**  for any given search. The Apify Booking Scraper lets you overcome this limitation.
+ 
+ 
+## Cost of usage
+ 
+* 1 Compute unit for 1,000 results with no details
+ 
+* 10 Compute units for 1,000 results with detailed information
+ 
+## Tutorial
+ 
+If you would like a step-by-step tutorial on how to scrape Booking, read our blog post on [how to scrape Booking.com](https://blog.apify.com/crawling-booking-com-47511a59eef/)
+ 
 ## Input attributes
-
+ 
 Input is a JSON object with the following properties:
-
+ 
 ```javascript
 {
     "search": SEARCH_QUERY,
@@ -42,7 +60,7 @@ Input is a JSON object with the following properties:
     "extendOutputFunction": EXTEND_OUTPUT_FUNCTION
 }
 ```
-
+ 
 * `search` is the only required attribute. This is the Booking.com search query.
 * `destType` specifies type of search, available values are `city` and `region`.
 * `simple` defines if the data should be extracted just from the list page, default is `false`.
@@ -82,7 +100,7 @@ You can use one of the following formats (or exclude the attribute from INPUT co
 and you don't need to limit yourself on the given ranges from booking.com website. You can even specify more specific
 price range than booking.com offers in price filters (e.g. Booking has price category 500+ but you can set values
 such as 520-550, 650-680, 700+, ...). The values apply to the currency provided as another INPUT attribute.
-* `proxyConfig` defines Apify proxy configuration and default group is SHADER, it should respect this format:
+* `proxyConfig` defines Apify PIroxy configuration and default group is SHADER, it should respect this format:
 ```json
 "proxyConfig": {
     "useApifyProxy": true,
@@ -105,18 +123,18 @@ such as 520-550, 650-680, 700+, ...). The values apply to the currency provided 
 ]
 ```
 * `extendOutputFunction` Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output, only when `simple` = false.
-
+ 
 ## Starting with URLs
-
+ 
 Instead of `search` INPUT attribute, it is also possible to start the crawler with an array of `startUrls`.
 In such case all the other attributes modifying the URLs will still be applied, it is therefore suggested to
 use simple urls and set all the other options using INPUT attributes instead of leaving them in the URL to
 avoid URL parameter clashing.
-In case the startUrl is a hotel detail page, it will be scraped. In case it is a hotel list page, the result
+If the startUrl is a hotel detail page, it will be scraped. In case it is a hotel list page, the result
 will depend on the `simple` attribute. If it's `true`, the page will be scraped, otherwise all the links to
 detail pages will be added to the queue and scraped afterwards.
 The `startUrls` attribute should contain an array of URLs as follows:
-
+ 
 ```javascript
 {
     "startUrls": [
@@ -130,11 +148,11 @@ The `startUrls` attribute should contain an array of URLs as follows:
     ...
 }
 ```
-
+ 
 ## Output examples
-
+ 
 In case of using the `simple` INPUT attribute, an example output for a single hotel can look like this:
-
+ 
 ```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
@@ -149,10 +167,10 @@ In case of using the `simple` INPUT attribute, an example output for a single ho
   "persons": 4
 }
 ```
-
+ 
 If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is further reduced as `price`,
 `currency`, `roomType` and `persons` cannot be scraped from the listing page. The output follows this format:
-
+ 
 ```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
@@ -163,10 +181,10 @@ If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is 
   "stars": 4
 }
 ```
-
+ 
 Otherwise the output will be much more comprehensive, especially the `rooms` array, which will however
 contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
-
+ 
 ```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
@@ -219,30 +237,14 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
   ]
 }
 ```
-
-## Compute units consumption
-Keep in mind that it is much more efficient to run one longer scrape (at least one minute) than more shorter ones because of the startup time.
-
-The average consumption is **1 Compute unit for 75 actor pages** scraped
-
+ 
+ 
 ## Notes
-
-* The actor will not work without proxy, i.e. if you try running it without setting a proxy, it will
-  fail with a message explaining exactly that. There can be a slight difference in price depending on the proxy you use.
-
-* Booking.com will only display maximum of 1000 results, if you need to circumvent this limitation,
-  you can utilize the `useFilters` INPUT attribute. However, in such case it will not be possible
-  to use any limiting filters in start URLs, because the scraper will override those.
-
-* If you need to get data about specific rooms, the crawler needs to be started with `checkIn` and
-  `checkOut` INPUT attributes (Booking.com only shows room info for specific dates).
-
-* Booking.com sometimes returns some suggested hotels that are outside of the expected city/region as a recommendation.
-  The actor will return all of them in the crawling results so you may recognize more results than your search.
-
-
-## Changelog
-This scraper is under active development. We are always implementing new features and fixing bugs. If you would like to see a new feature, please submit an issue on GitHub. Check [CHANGELOG.md](https://github.com/dtrungtin/actor-booking-scraper/blob/master/CHANGELOG.md) for a list of recent updates
-
-## Epilogue
-Thank you for trying my actor. I will be very glad for a feedback that you can send to my email `dtrungtin@gmail.com`. If you find any bug, please create an issue on the [Github page](https://github.com/dtrungtin/actor-booking-scraper).
+ 
+* The actor will not work without a proxy. If you try running the actor without a proxy, it will fail with a message stating exactly that. There could be a slight difference in price depending on the type of proxy you use.
+ 
+* Booking.com will only display a maximum of 1,000 results; if you need to circumvent this limitation, you can utilize the `useFilters` INPUT attribute. However, using any limiting filters in start URLs will not be possible because the scraper will override those.
+ 
+* If you need to get data about specific rooms, the crawler needs to be started with `checkIn` and `checkOut` INPUT attributes (Booking.com only shows room info for specific dates).
+ 
+* Booking.com may return some suggested hotels outside of the expected city/region as a recommendation. The actor will return all of them in the crawling results, so you may get more results than your search.
