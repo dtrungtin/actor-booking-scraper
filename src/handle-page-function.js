@@ -6,25 +6,26 @@ const {
     enqueueFilterLinks, enqueueAllPages,
 } = require('./util');
 
-const { MAX_RESULTS_LIMIT } = require('./consts');
+const { MAX_PAGES, RESULTS_PER_PAGE } = require('./consts');
 
 const { log } = Apify.utils;
 
-module.exports = async ({ page, request, session, extendOutputFunction, requestQueue, input,
-    sortBy, state }) => {
+module.exports = async (context, globalContext) => {
+    const { page, request, session, crawler: { requestQueue } } = context;
+    const { input, extendOutputFunction } = globalContext;
     const { url, userData } = request;
     const { label } = userData;
 
     log.info(`open url(${label}): ${url}`);
 
     if (label === 'detail') {
-        await handleDetailPage(page, input, userData, session, extendOutputFunction);
+        await handleDetailPage({ page, input, userData, session, extendOutputFunction });
     } else {
-        await handleListPage(page, input, request, session, requestQueue, sortBy, state);
+        await handleListPage({ page, request, session, requestQueue }, globalContext);
     }
 };
 
-const handleDetailPage = async (page, input, userData, session, extendOutputFunction) => {
+const handleDetailPage = async ({ page, input, userData, session, extendOutputFunction }) => {
     const { startUrls, minScore } = input;
 
     await waitForDetailPageToLoad(page);
@@ -51,8 +52,9 @@ const handleDetailPage = async (page, input, userData, session, extendOutputFunc
     await Apify.pushData({ ...detail, ...userResult });
 };
 
-const handleListPage = async (page, input, request, session, requestQueue, sortBy, state) => {
-    const { startUrls, useFilters, simple } = input;
+const handleListPage = async ({ page, request, session, requestQueue }, globalContext) => {
+    const { input, sortBy, state } = globalContext;
+    const { startUrls, simple } = input;
     const { userData: { label } } = request;
 
     await waitForListPageToLoad(page);
@@ -60,15 +62,15 @@ const handleListPage = async (page, input, request, session, requestQueue, sortB
     // Check if the page was opened through working proxy.
     validateProxy(page, session, startUrls, sortBy);
 
-    const items = await getCurrentPageResultsCount(page);
-    if (items.length === 0) {
+    const itemsCount = await getCurrentPageResultsCount(page);
+    if (itemsCount === 0) {
         log.info('Found no result. Skipping...');
         return;
     }
 
     if (simple) {
         // If simple output is enough, extract the data.
-        const results = await extractListPageResults(page, input, state);
+        const results = await extractListPageResults(page, request, input, state);
         await Apify.pushData(results);
     } else {
         // If not, enqueue the detail pages to be extracted.
@@ -77,31 +79,36 @@ const handleListPage = async (page, input, request, session, requestQueue, sortB
 
     const isStartPage = label !== 'page';
     if (isStartPage) {
-        await handleStartPage(page, useFilters, input, request, requestQueue, state);
+        await handleStartPage({ page, request, requestQueue }, globalContext);
     }
 };
 
-const handleStartPage = async (page, useFilters, input, request, requestQueue, state) => {
-    const totalResults = await getTotalListingsCount(page);
-    const shouldUseFilters = useFilters && totalResults > MAX_RESULTS_LIMIT;
+const handleStartPage = async ({ page, request, requestQueue }, globalContext) => {
+    const { input, remainingPages } = globalContext;
+    const { useFilters } = input;
 
-    /*  If filtering is enabled, enqueue filtered pages. Filter pages enqueuing is placed
-        before pagination pages enqueuing on purpose - setting new filter restriction displays
-        differents results on the first listing page so we will be getting new dataset items faster
-        at the beginning.
-    */
-    if (shouldUseFilters) {
-        await enqueueFilteredPages(page, request, requestQueue, state);
+    const totalResults = await getTotalListingsCount(page);
+    const usingFilters = shouldUseFilters(totalResults, useFilters, remainingPages);
+
+    /**
+     * If filtering is enabled, enqueue filtered pages. Filter pages enqueuing is placed
+     * before pagination pages enqueuing on purpose - setting new filter restriction displays
+     * differents results on the first listing page so we will be getting new dataset items faster
+     * at the beginning.
+     */
+    if (usingFilters) {
+        await enqueueFilteredPages({ page, request, requestQueue }, globalContext);
     }
 
-    /*  Enqueue all pagination pages from start page when shouldUseFilters is false.
-        With useFilters set, we enqueue all combinations of available filters and for each
-        combination, we only scrape first page if there are more than MAX_RESULTS_LIMIT results
-        to avoid pagination pages overload. At some point, we surely get under MAX_RESULTS_LIMIT
-        results and then we enqueue pagination links instead of more filtered pages.
-    */
-    if (!shouldUseFilters) {
-        await enqueuePaginationPages(page, input, requestQueue);
+    /**
+     * Enqueue all pagination pages from start page when shouldUseFilters is false.
+     * With useFilters set, we enqueue all combinations of available filters and for each
+     * combination, we only scrape first page if there are more than MAX_RESULTS_LIMIT results
+     * to avoid pagination pages overload. At some point, we surely get under MAX_RESULTS_LIMIT
+     * results and then we enqueue pagination links instead of more filtered pages.
+     */
+    if (!usingFilters) {
+        await enqueuePaginationPages({ page, requestQueue }, globalContext);
     }
 };
 
@@ -124,15 +131,13 @@ const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExte
     return userResult;
 };
 
-const enqueuePaginationPages = async (page, input, requestQueue) => {
-    const { maxPages } = input;
-
-    if (!maxPages || maxPages > 1) {
-        await enqueueAllPages(page, requestQueue, input, maxPages);
+const enqueuePaginationPages = async ({ page, requestQueue }, globalContext) => {
+    if (globalContext.remainingPages > 0) {
+        await enqueueAllPages(page, requestQueue, globalContext);
     }
 };
 
-const enqueueFilteredPages = async (page, request, requestQueue, state) => {
+const enqueueFilteredPages = async ({ page, request, requestQueue }, globalContext) => {
     log.info('enqueuing filtered pages...');
 
     const attribute = 'value';
@@ -141,7 +146,7 @@ const enqueueFilteredPages = async (page, request, requestQueue, state) => {
     const extractionInfo = { page, unchecked, attribute };
     const urlInfo = { baseUrl: request.url, label: 'start' };
 
-    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue, state);
+    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue, globalContext);
 };
 
 const enqueueDetailPages = async (page, input, requestQueue) => {
@@ -209,6 +214,13 @@ const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     }
 };
 
+const shouldUseFilters = (totalResults, useFilters, remainingPages) => {
+    const maxResults = MAX_PAGES * RESULTS_PER_PAGE;
+    const requiresPagesOverLimit = remainingPages > MAX_PAGES;
+
+    return useFilters && totalResults > maxResults && requiresPagesOverLimit;
+};
+
 const getCurrentPageResultsCount = async (page) => {
     // eslint-disable-next-line max-len
     const items = await page.$$('.sr_property_block.sr_item:not(.soldout_property), [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"]');
@@ -222,7 +234,7 @@ const getTotalListingsCount = async (page) => {
     return parseInt(heading.replace(/[^0-9]/g, ''), 10);
 };
 
-const extractListPageResults = async (page, input, state) => {
+const extractListPageResults = async (page, request, input, state) => {
     log.info('extracting data...');
     await Apify.utils.puppeteer.injectJQuery(page);
     const result = await page.evaluate(listPageFunction, input);
@@ -238,7 +250,7 @@ const extractListPageResults = async (page, input, state) => {
             }
         }
 
-        log.info(`Found ${toBeAdded.length} new results out of ${result.length} results.`);
+        log.info(`Found ${toBeAdded.length} new results out of ${result.length} results.`, { url: request.url });
     }
 
     return toBeAdded;

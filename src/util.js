@@ -1,8 +1,8 @@
 const Apify = require('apify');
-const moment = require('moment');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
+const moment = require('moment');
 
-const { MAX_OFFSET, DATE_FORMAT, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS } = require('./consts');
+const { DATE_FORMAT, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS, RESULTS_PER_PAGE } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -252,10 +252,10 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
  *
  * @param {Page} page - The Puppeteer page object.
  * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {Object} input - The Actor input data object.
- * @param {Number} maxPages - Maximum pagination pages.
+ * @param {{ input: Object, remainingPages: number }} globalContext - Actor's global context.
  */
-module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => {
+module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
+    const { input } = globalContext;
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
         log.info('enqueuing pagination pages...');
@@ -267,26 +267,25 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
             const countData = (await getAttribute(countElem, 'textContent')).replace(/\.|,|\s/g, '').match(/\d+/);
 
             if (countData) {
-                let count = Math.ceil(parseInt(countData[0], 10) / 25);
+                const count = Math.ceil(parseInt(countData[0], 10) / RESULTS_PER_PAGE);
                 log.info(`pagination pages: ${count}`);
-                if (maxPages && maxPages > 0 && maxPages < count) {
-                    count = maxPages;
-                    log.info(`max pagination pages: ${count}`);
-                }
 
                 for (let i = 1; i < count; i++) {
-                    const newOffset = 25 * i;
-                    if (newOffset <= MAX_OFFSET) {
-                        // enqueueing urls with greater offset results in scraping last page all over again infinitely
-                        // maximum offset is overestimated to ensure maximum number of items to be scraped
-                        const newUrl = pageUrl.includes('offset=')
-                            ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
-                            : `${pageUrl}&offset=${newOffset}`;
-                        await requestQueue.addRequest({
-                            url: addUrlParameters(newUrl, input),
-                            userData: { label: 'page' },
-                        });
+                    const newOffset = RESULTS_PER_PAGE * i;
+                    const newUrl = pageUrl.includes('offset=')
+                        ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
+                        : `${pageUrl}&offset=${newOffset}`;
+
+                    if (globalContext.remainingPages < 1) {
+                        break;
                     }
+
+                    globalContext.remainingPages--;
+
+                    await requestQueue.addRequest({
+                        url: addUrlParameters(newUrl, input),
+                        userData: { label: 'page' },
+                    });
                 }
             }
         } catch (e) {
@@ -295,10 +294,10 @@ module.exports.enqueueAllPages = async (page, requestQueue, input, maxPages) => 
     }
 };
 
-module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, state) => {
+module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
     const { page, unchecked, attribute } = extractionInfo;
     const { label, baseUrl } = urlInfo;
-    const { enqueuedUrls } = state;
+    const { state: { enqueuedUrls } } = globalContext;
 
     const url = new URL(baseUrl);
 
@@ -313,7 +312,7 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
         log.info(`enqueuing pages with ${filtersToEnqueue.length} new filters set...`);
     }
 
-    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls);
+    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls, globalContext);
 };
 
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
@@ -411,7 +410,7 @@ const haveSameQueryParamNames = (firstUrl, secondUrl) => {
     return true;
 };
 
-const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls) => {
+const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls, globalContext) => {
     for (const filter of filters) {
         const { name, values } = filter;
 
@@ -421,7 +420,8 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrl
             url.searchParams.set(name, value);
 
             // Check that url with the exact same filters and values doesn't exist already.
-            if (!enqueuedUrls.includes(url)) {
+            if (!enqueuedUrls.includes(url) && globalContext.remainingPages > 0) {
+                globalContext.remainingPages--;
                 enqueuedUrls.push(url);
 
                 await requestQueue.addRequest({

@@ -30,12 +30,13 @@ Apify.main(async () => {
         await Apify.setValue('STATE', state);
     });
 
+    const remainingPages = maxPages || Number.MAX_SAFE_INTEGER; // initialized as max integer to avoid undefined check
     const requestQueue = await Apify.openRequestQueue();
-    const { requestSources } = await prepareRequestSources({ startUrls, input, maxPages, sortBy });
+    const globalContext = { input, extendOutputFunction, sortBy, state, remainingPages };
+
+    const { requestSources } = await prepareRequestSources({ startUrls, input, sortBy }, globalContext);
     const requestList = await Apify.openRequestList('LIST', requestSources);
     const proxyConfiguration = (await Apify.createProxyConfiguration(proxyConfig)) || undefined;
-
-    const globalContext = { requestQueue, input, extendOutputFunction, sortBy, state };
 
     const crawler = new Apify.PuppeteerCrawler({
         requestList,
@@ -63,7 +64,7 @@ Apify.main(async () => {
 
             await errorSnapshotter.tryWithSnapshot(
                 context.page,
-                async () => handlePageFunctionExtended({ ...context, ...globalContext }),
+                async () => handlePageFunctionExtended(context, globalContext),
             );
         },
         handleFailedRequestFunction: async ({ request }) => {

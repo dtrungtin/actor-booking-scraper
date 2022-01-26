@@ -98,7 +98,7 @@
         "minScore": {
             "title": "Minimum rating",
             "type": "string",
-            "description": "Minimum rating of a hotel",
+            "description": "Minimum rating of a hotel in \"8.4\" format",
             "editor": "textfield"
         },
         "currency": {
