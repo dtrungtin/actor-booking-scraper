@@ -1,8 +1,7 @@
-# Features
- 
+# What does Booking Scraper do?
 Our free Booking Scraper allows you to scrape hotel data from Booking.com, one of the best-known platforms for hotels, apartments, resorts, villas, and other types of accommodation worldwide.
  
-Our Booking.com Scraper is capable of extracting valuable data such as:
+Our Booking.com scraper is capable of extracting data such as:
  
 * Hotel names and locations
  
@@ -20,22 +19,21 @@ Our Booking.com Scraper is capable of extracting valuable data such as:
  
 * Promotions
  
-The Booking.com API interface is quite user-friendly, but getting that data in machine-processable format is no easy task. Booking utilizes many anti-scraping mechanisms, one of them being that it will only display **a maximum of 1000 results**  for any given search. The Apify Booking Scraper lets you overcome this limitation.
+The Booking.com API interface is quite user-friendly, but getting that data in machine-processable format is no easy task. Booking places a lot of restrictions on how data can be collected from its listings, one of them being that it will only display a **maximum of 1,000 results**  for any given search. Apify's Booking Scraper doesn't impose any limitations on your results, so you can extract data from Booking at scale.
  
+## How much will it cost to use scrape Booking.com?
+* 1 compute unit for 1,000 results with no details
+* 10 compute units for 1,000 results with detailed information
+
+That means that Booking Scraper will cost you $0.25-2.50 for 1,000 results, depending on how much detailed data you need to collect.
  
-## Cost of usage
- 
-* 1 Compute unit for 1,000 results with no details
- 
-* 10 Compute units for 1,000 results with detailed information
- 
-## Tutorial
- 
-If you would like a step-by-step tutorial on how to scrape Booking, read our blog post on [how to scrape Booking.com](https://blog.apify.com/crawling-booking-com-47511a59eef/)
+## How can I scrape Booking.com?
+If you want a step-by-step tutorial on how to scrape Booking, read our blog post on [how to scrape Booking.com](https://blog.apify.com/crawling-booking-com-47511a59eef/) or just sit back and enjoy this quick tutorial video:
+
+[![Watch the video](https://img.youtube.com/vi/FZgi9YxNBa0/0.jpg)](https://youtu.be/FZgi9YxNBa0)
  
 ## Input attributes
- 
-Input is a JSON object with the following properties:
+The input for the scraper is a JSON object with the following properties:
  
 ```javascript
 {
@@ -97,10 +95,10 @@ Must be one of the following:
 * `minMaxPrice` min-max price range, it will filter the results, so it cannot be combined with `useFilters`.
 You can use one of the following formats (or exclude the attribute from INPUT completely):
 `none`, `100-150`, `200+`. Note that the actor sets custom price filter so you can provide arbitrary price range
-and you don't need to limit yourself on the given ranges from booking.com website. You can even specify more specific
-price range than booking.com offers in price filters (e.g. Booking has price category 500+ but you can set values
+and you don't need to limit yourself on the given ranges from the booking.com website. You can even specify a more specific
+price range than booking.com offers in its price filters (e.g. Booking has price category 500+ but you can set values
 such as 520-550, 650-680, 700+, ...). The values apply to the currency provided as another INPUT attribute.
-* `proxyConfig` defines Apify PIroxy configuration and default group is SHADER, it should respect this format:
+* `proxyConfig` defines Apify Proxy configuration and the default group is SHADER, it should respect this format:
 ```json
 "proxyConfig": {
     "useApifyProxy": true,
@@ -124,13 +122,11 @@ such as 520-550, 650-680, 700+, ...). The values apply to the currency provided 
 ```
 * `extendOutputFunction` Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output, only when `simple` = false.
  
-## Starting with URLs
- 
+## Scraping by URLs
 Instead of `search` INPUT attribute, it is also possible to start the crawler with an array of `startUrls`.
-In such case all the other attributes modifying the URLs will still be applied, it is therefore suggested to
-use simple urls and set all the other options using INPUT attributes instead of leaving them in the URL to
+In this case all the other attributes modifying the URLs will still be applied, it is therefore suggested to use simple urls and set all the other options using INPUT attributes instead of leaving them in the URL to
 avoid URL parameter clashing.
-If the startUrl is a hotel detail page, it will be scraped. In case it is a hotel list page, the result
+If the startURL is a hotel detail page, it will be scraped. In case it is a hotel list page, the result
 will depend on the `simple` attribute. If it's `true`, the page will be scraped, otherwise all the links to
 detail pages will be added to the queue and scraped afterwards.
 The `startUrls` attribute should contain an array of URLs as follows:
@@ -150,8 +146,7 @@ The `startUrls` attribute should contain an array of URLs as follows:
 ```
  
 ## Output examples
- 
-In case of using the `simple` INPUT attribute, an example output for a single hotel can look like this:
+If using the `simple` INPUT attribute, the example output for a single hotel might look like this:
  
 ```json
 {
@@ -182,7 +177,7 @@ If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is 
 }
 ```
  
-Otherwise the output will be much more comprehensive, especially the `rooms` array, which will however
+Otherwise the output will be much more comprehensive, especially the `rooms` array, which will, however,
 contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
  
 ```json
@@ -240,7 +235,6 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
  
  
 ## Notes
- 
 * The actor will not work without a proxy. If you try running the actor without a proxy, it will fail with a message stating exactly that. There could be a slight difference in price depending on the type of proxy you use.
  
 * Booking.com will only display a maximum of 1,000 results; if you need to circumvent this limitation, you can utilize the `useFilters` INPUT attribute. However, using any limiting filters in start URLs will not be possible because the scraper will override those.
