@@ -98,12 +98,10 @@ You can use one of the following formats (or exclude the attribute from INPUT co
 and you don't need to limit yourself on the given ranges from the booking.com website. You can even specify a more specific
 price range than booking.com offers in its price filters (e.g. Booking has price category 500+ but you can set values
 such as 520-550, 650-680, 700+, ...). The values apply to the currency provided as another INPUT attribute.
-* `proxyConfig` defines Apify Proxy configuration and the default group is SHADER, it should respect this format:
+* `proxyConfig` defines Apify Proxy configuration, it should respect this format:
 ```json
 "proxyConfig": {
-    "useApifyProxy": true,
-    "apifyProxyGroups": [
-        "SHADER"
+    "useApifyProxy": true
     ]
 }
 ```
