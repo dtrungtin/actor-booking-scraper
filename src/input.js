@@ -18,9 +18,9 @@ module.exports.validateInput = (input) => {
     }
     // On Apify platform, proxy is mandatory
     if (Apify.isAtHome()) {
-        const usesApifyProxy = proxyConfig && proxyConfig.useApifyProxy;
-        const usesCustomProxies = proxyConfig
-            && Array.isArray(proxyConfig.proxyUrls) && proxyConfig.proxyUrls.length > 0;
+        const { useApifyProxy, proxyUrls } = proxyConfig;
+        const usesApifyProxy = proxyConfig && useApifyProxy;
+        const usesCustomProxies = proxyConfig && Array.isArray(proxyUrls) && proxyUrls.length > 0;
         if (!(usesApifyProxy || usesCustomProxies)) {
             throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
         }
@@ -79,7 +79,9 @@ module.exports.evalExtendOutputFn = (input) => {
             throw new Error(`WRONG INPUT: 'extendOutputFunction' is not valid Javascript! Error: ${e}`);
         }
         if (typeof extendOutputFunction !== 'function') {
-            throw new Error('WRONG INPUT: extendOutputFunction is not a function! Please fix it or use just default ouput!');
+            throw new Error(
+                'WRONG INPUT: extendOutputFunction is not a function! Please fix it or use just default ouput!',
+            );
         }
     }
     return extendOutputFunction;

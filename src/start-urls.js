@@ -23,10 +23,13 @@ module.exports.prepareRequestSources = async ({ startUrls, input, sortBy }, glob
                     requestSources.push(request);
                 }
             } else {
-                if (typeof request === 'string') { request = { url: request }; }
+                if (typeof request === 'string') {
+                    request = { url: request };
+                }
 
                 // TODO: Figure out how to fix this
-                if ((!request.userData || !(request.userData.label !== 'detail')) && request.url.indexOf('/hotel/') > -1) {
+                const isDetailPage = !request.userData || request.userData.label === 'detail';
+                if (isDetailPage && request.url.indexOf('/hotel/') > -1) {
                     request.userData = { label: 'detail' };
                 }
 
@@ -34,7 +37,10 @@ module.exports.prepareRequestSources = async ({ startUrls, input, sortBy }, glob
                 requestSources.push(request);
             }
         }
-        startUrl = addUrlParameters('https://www.booking.com/searchresults.html?dest_type=city&ss=paris&order=bayesian_review_score', input);
+        startUrl = addUrlParameters(
+            'https://www.booking.com/searchresults.html?dest_type=city&ss=paris&order=bayesian_review_score',
+            input,
+        );
     } else {
         const { useFilters, minMaxPrice, propertyType } = input;
 

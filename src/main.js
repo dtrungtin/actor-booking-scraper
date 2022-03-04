@@ -24,7 +24,7 @@ Apify.main(async () => {
     const errorSnapshotter = new ErrorSnapshotter();
     await errorSnapshotter.initialize(Apify.events);
 
-    const state = await Apify.getValue('STATE') || { crawled: {}, enqueuedUrls: [] };
+    const state = (await Apify.getValue('STATE')) || { crawled: {}, enqueuedUrls: [] };
 
     Apify.events.on('persistState', async () => {
         await Apify.setValue('STATE', state);
@@ -46,9 +46,7 @@ Apify.main(async () => {
         launchContext: {
             useChrome: Apify.isAtHome(),
             launchOptions: {
-                args: [
-                    '--ignore-certificate-errors',
-                ],
+                args: ['--ignore-certificate-errors'],
                 ignoreHTTPSErrors: true,
             },
             userAgent: USER_AGENT,
@@ -62,10 +60,9 @@ Apify.main(async () => {
                 throw new Error(`The loaded url (${loadedUrl}) seems wrong! Retry...`);
             }
 
-            await errorSnapshotter.tryWithSnapshot(
-                context.page,
-                async () => handlePageFunctionExtended(context, globalContext),
-            );
+            await errorSnapshotter.tryWithSnapshot(context.page, async () => {
+                await handlePageFunctionExtended(context, globalContext);
+            });
         },
         handleFailedRequestFunction: async ({ request }) => {
             log.info(`Request ${request.url} failed too many times`);
@@ -73,18 +70,20 @@ Apify.main(async () => {
                 '#debug': Apify.utils.createRequestDebugInfo(request),
             });
         },
-        preNavigationHooks: [async ({ page }) => {
-            if (!enableAssets) {
-                await Apify.utils.puppeteer.blockRequests(page);
-            }
+        preNavigationHooks: [
+            async ({ page }) => {
+                if (!enableAssets) {
+                    await Apify.utils.puppeteer.blockRequests(page);
+                }
 
-            const cookies = await page.cookies('https://www.booking.com');
-            await page.deleteCookie(...cookies);
-            await page.setViewport({
-                width: 1024 + Math.floor(Math.random() * 100),
-                height: 768 + Math.floor(Math.random() * 100),
-            });
-        }],
+                const cookies = await page.cookies('https://www.booking.com');
+                await page.deleteCookie(...cookies);
+                await page.setViewport({
+                    width: 1024 + Math.floor(Math.random() * 100),
+                    height: 768 + Math.floor(Math.random() * 100),
+                });
+            },
+        ],
     });
 
     log.info('Starting the crawl.');

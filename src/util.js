@@ -2,7 +2,7 @@ const Apify = require('apify');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const moment = require('moment');
 
-const { DATE_FORMAT, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS, RESULTS_PER_PAGE } = require('./consts');
+const { DATE_FORMAT, PROPERTY_TYPE_IDS, RESULTS_PER_PAGE } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -133,7 +133,18 @@ const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
 };
 
 const addUrlParametersForHotelListingUrl = (url, input) => {
-    const { currency, language, adults, children, rooms, minScore, minMaxPrice, propertyType, checkIn, checkOut } = input;
+    const {
+        currency,
+        language,
+        adults,
+        children,
+        rooms,
+        minScore,
+        minMaxPrice,
+        propertyType,
+        checkIn,
+        checkOut,
+    } = input;
 
     const extendedUrl = new URL(url);
 
@@ -145,7 +156,7 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
         { isSet: adults, name: 'group_adults', value: adults },
         { isSet: children, name: 'group_children', value: children },
         { isSet: rooms, name: 'no_rooms', value: rooms },
-        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
+        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : undefined },
     ];
 
     const currencyValue = extendedUrl.searchParams.get('selected_currency') || 'USD';
@@ -156,7 +167,7 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
 
     queryParameters.forEach((parameter) => {
         const { isSet, name, value } = parameter;
-        if (isSet && !extendedUrl.searchParams.has(name) && !url.includes(`nflt=${name}`)) {
+        if (isSet && value && !extendedUrl.searchParams.has(name) && !url.includes(`nflt=${name}`)) {
             /* we need to check for url.includes besides searchParams.has because if startUrl is specified,
             it might use nflt=param_name which can not be checked by searchParams.has effectively due to URI encoding */
             extendedUrl.searchParams.set(name, value);
@@ -191,7 +202,9 @@ module.exports.fixUrl = (s, input) => (href) => {
         const lng = input.language.replace('_', '-');
         if (href.indexOf(s)) {
             href.replace(s, `${s}lang=${lng}${s}`);
-        } else { href += `${s}lang=${lng}`; }
+        } else {
+            href += `${s}lang=${lng}`;
+        }
     }
     if (input.currency && href.indexOf('currency') < 0) {
         href += `${s}selected_currency=${input.currency.toUpperCase()}${s}changed_currency=1${s}top_currency=1`;
@@ -238,7 +251,11 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
     if (checkIn && checkOut) {
         if (!checkOut.isSameOrAfter(checkIn)) {
             // eslint-disable-next-line max-len
-            throw new Error(`WRONG INPUT: checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`);
+            throw new Error(
+                `WRONG INPUT: checkOut ${checkOut.format(
+                    DATE_FORMAT,
+                )} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`,
+            );
         }
 
         return checkOut.diff(checkIn, 'days', true);
@@ -343,8 +360,7 @@ const convertMomentToDate = (time) => {
 const getValidFilters = (uncheckedFilters) => {
     const validFilters = { ...uncheckedFilters };
 
-    /* Exclude review_score from filter enqueuing. It has a strict value for each run that can not be changed
-    (even if it's unspecified in the input - default value is DEFAULT_MIN_SCORE). */
+    /* Exclude review_score from filter enqueuing. It has a strict value for each run that can not be changed. */
     delete validFilters.review_score;
 
     // Invalid filter that is scraped among other checkboxes.

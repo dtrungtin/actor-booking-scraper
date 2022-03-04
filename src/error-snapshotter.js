@@ -13,9 +13,7 @@ class ErrorSnapshotter {
      * @param {number} [options.maxErrorCharacters] Override default max error chars for all errors
      */
     constructor(options) {
-        const {
-            maxErrorCharacters = 80,
-        } = (options || {});
+        const { maxErrorCharacters = 80 } = options || {};
         this.maxErrorCharacters = maxErrorCharacters;
         /** @type {{[key: string]: number}}  */
         this.errorState = {};
@@ -28,7 +26,11 @@ class ErrorSnapshotter {
      * @param {any} events
      */
     async initialize(events) {
-        this.errorState = /** @type {{[key: string]: number}} */ (await Apify.getValue('ERROR-SNAPSHOTTER-STATE')) || {};
+        /** @type {{[key: string]: number}} */
+        const errorSnapshotterState = (await Apify.getValue('ERROR-SNAPSHOTTER-STATE')) || {};
+
+        this.errorState = errorSnapshotterState;
+
         events.on('persistState', this.persistState.bind(this));
     }
 
@@ -53,7 +55,7 @@ class ErrorSnapshotter {
         if (typeof pageOrHtml !== 'string' && typeof pageOrHtml !== 'object') {
             throw new Error('Try with snapshot: Wrong input! pageOrHtml must be Puppeteer page or HTML');
         }
-        const { name, returnError = false, maxErrorCharacters } = (options || {});
+        const { name, returnError = false, maxErrorCharacters } = options || {};
         try {
             return await fn();
         } catch (e) {

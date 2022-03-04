@@ -1,10 +1,7 @@
 const Apify = require('apify');
 
 const { extractDetail, listPageFunction } = require('./extraction');
-const {
-    getAttribute, addUrlParameters, fixUrl, isObject,
-    enqueueFilterLinks, enqueueAllPages,
-} = require('./util');
+const { getAttribute, addUrlParameters, fixUrl, isObject, enqueueFilterLinks, enqueueAllPages } = require('./util');
 
 const { MAX_PAGES, RESULTS_PER_PAGE } = require('./consts');
 
@@ -159,25 +156,30 @@ const enqueueDetailPages = async (page, input, requestQueue) => {
     const pageRange = (await getAttribute(prItem, 'textContent')).match(/\d+/g);
     const firstItem = parseInt(pageRange && pageRange[0] ? pageRange[0] : '1', 10);
 
-    // eslint-disable-next-line max-len
-    const links = await page.$$('.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link, [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"] a[data-testid="title-link"]');
+    const links = await page.$$(
+        // eslint-disable-next-line max-len
+        '.sr_property_block.sr_item:not(.soldout_property) .hotel_name_link, [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"] a[data-testid="title-link"]',
+    );
 
     for (let iLink = 0; iLink < links.length; iLink++) {
         const link = links[iLink];
         const href = await getAttribute(link, 'href');
 
         if (href) {
-            const uniqueKeyCal = keyMod ? (await keyMod(link)) : href;
+            const uniqueKeyCal = keyMod ? await keyMod(link) : href;
             const urlModCal = urlMod ? urlMod(href) : href;
 
-            await requestQueue.addRequest({
-                userData: {
-                    label: 'detail',
-                    order: iLink + firstItem,
+            await requestQueue.addRequest(
+                {
+                    userData: {
+                        label: 'detail',
+                        order: iLink + firstItem,
+                    },
+                    url: urlModCal,
+                    uniqueKey: uniqueKeyCal,
                 },
-                url: urlModCal,
-                uniqueKey: uniqueKeyCal,
-            }, { forefront: true });
+                { forefront: true },
+            );
         }
     }
 };
@@ -223,7 +225,9 @@ const shouldUseFilters = (totalResults, useFilters, remainingPages) => {
 
 const getCurrentPageResultsCount = async (page) => {
     // eslint-disable-next-line max-len
-    const items = await page.$$('.sr_property_block.sr_item:not(.soldout_property), [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"]');
+    const items = await page.$$(
+        '.sr_property_block.sr_item:not(.soldout_property), [data-capla-component*="PropertiesListDesktop"] [data-testid="property-card"]',
+    );
 
     return items.length;
 };

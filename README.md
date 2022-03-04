@@ -1,40 +1,40 @@
 # What does Booking Scraper do?
 Our free Booking Scraper allows you to scrape hotel data from Booking.com, one of the best-known platforms for hotels, apartments, resorts, villas, and other types of accommodation worldwide.
- 
+
 Our Booking.com scraper is capable of extracting data such as:
- 
+
 * Hotel names and locations
- 
+
 * Availability
- 
+
 * Check-in and check-out times
- 
+
 * Room types
- 
+
 * Prices
- 
+
 * Reviews
- 
+
 * Conditions
- 
+
 * Promotions
- 
+
 The Booking.com API interface is quite user-friendly, but getting that data in machine-processable format is no easy task. Booking places a lot of restrictions on how data can be collected from its listings, one of them being that it will only display a **maximum of 1,000 results**  for any given search. Apify's Booking Scraper doesn't impose any limitations on your results, so you can extract data from Booking at scale.
- 
+
 ## How much will it cost to use scrape Booking.com?
 * 1 compute unit for 1,000 results with no details
 * 10 compute units for 1,000 results with detailed information
 
 That means that Booking Scraper will cost you $0.25-2.50 for 1,000 results, depending on how much detailed data you need to collect.
- 
+
 ## How can I scrape Booking.com?
 If you want a step-by-step tutorial on how to scrape Booking, read our blog post on [how to scrape Booking.com](https://blog.apify.com/crawling-booking-com-47511a59eef/) or just sit back and enjoy this quick tutorial video:
 
 [![Watch the video](https://img.youtube.com/vi/FZgi9YxNBa0/0.jpg)](https://youtu.be/FZgi9YxNBa0)
- 
+
 ## Input attributes
 The input for the scraper is a JSON object with the following properties:
- 
+
 ```javascript
 {
     "search": SEARCH_QUERY,
@@ -58,12 +58,12 @@ The input for the scraper is a JSON object with the following properties:
     "extendOutputFunction": EXTEND_OUTPUT_FUNCTION
 }
 ```
- 
+
 * `search` is the only required attribute. This is the Booking.com search query.
 * `destType` specifies type of search, available values are `city` and `region`.
 * `simple` defines if the data should be extracted just from the list page, default is `false`.
 * `useFilters` sets if the crawler should utilize criteria filters to overcome the limit for 1000 results.
-* `minScore` specifies the minimum allowed rating of the hotel to be included in results, default is `8.4`.
+* `minScore` specifies the minimum allowed rating of the hotel to be included in results.
 * `maxPages` sets maximum number of pagination pages to be crawled.
 * `checkIn` check-in date in the yyyy-mm-dd format.
 * `checkOut` check-out date in the yyyy-mm-dd format.
@@ -102,7 +102,6 @@ such as 520-550, 650-680, 700+, ...). The values apply to the currency provided 
 ```json
 "proxyConfig": {
     "useApifyProxy": true
-    ]
 }
 ```
 * `sortBy` sets a hotel attribute by which the results will be ordered, must be one of the following.
@@ -119,7 +118,7 @@ such as 520-550, 650-680, 700+, ...). The values apply to the currency provided 
 ]
 ```
 * `extendOutputFunction` Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output, only when `simple` = false.
- 
+
 ## Scraping by URLs
 Instead of `search` INPUT attribute, it is also possible to start the crawler with an array of `startUrls`.
 In this case all the other attributes modifying the URLs will still be applied, it is therefore suggested to use simple urls and set all the other options using INPUT attributes instead of leaving them in the URL to
@@ -128,7 +127,7 @@ If the startURL is a hotel detail page, it will be scraped. In case it is a hote
 will depend on the `simple` attribute. If it's `true`, the page will be scraped, otherwise all the links to
 detail pages will be added to the queue and scraped afterwards.
 The `startUrls` attribute should contain an array of URLs as follows:
- 
+
 ```javascript
 {
     "startUrls": [
@@ -142,10 +141,10 @@ The `startUrls` attribute should contain an array of URLs as follows:
     ...
 }
 ```
- 
+
 ## Output examples
 If using the `simple` INPUT attribute, the example output for a single hotel might look like this:
- 
+
 ```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
@@ -160,10 +159,10 @@ If using the `simple` INPUT attribute, the example output for a single hotel mig
   "persons": 4
 }
 ```
- 
+
 If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is further reduced as `price`,
 `currency`, `roomType` and `persons` cannot be scraped from the listing page. The output follows this format:
- 
+
 ```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
@@ -174,10 +173,10 @@ If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is 
   "stars": 4
 }
 ```
- 
+
 Otherwise the output will be much more comprehensive, especially the `rooms` array, which will, however,
 contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
- 
+
 ```json
 {
   "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
@@ -230,13 +229,13 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
   ]
 }
 ```
- 
- 
+
+
 ## Notes
 * The actor will not work without a proxy. If you try running the actor without a proxy, it will fail with a message stating exactly that. There could be a slight difference in price depending on the type of proxy you use.
- 
+
 * Booking.com will only display a maximum of 1,000 results; if you need to circumvent this limitation, you can utilize the `useFilters` INPUT attribute. However, using any limiting filters in start URLs will not be possible because the scraper will override those.
- 
+
 * If you need to get data about specific rooms, the crawler needs to be started with `checkIn` and `checkOut` INPUT attributes (Booking.com only shows room info for specific dates).
- 
+
 * Booking.com may return some suggested hotels outside of the expected city/region as a recommendation. The actor will return all of them in the crawling results, so you may get more results than your search.
