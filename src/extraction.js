@@ -191,6 +191,8 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const homeType = hType ? await getAttribute(hType, 'textContent') : null;
     const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
 
+    const reviews = extractReviews(html);
+
     return {
         order: userData.order,
         url: addUrlParameters(page.url().split('?')[0], input),
@@ -200,7 +202,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         stars,
         price,
         rating: aggregateRating ? aggregateRating.ratingValue : null,
-        reviews: aggregateRating ? aggregateRating.reviewCount : null,
+        reviewsCount: aggregateRating ? aggregateRating.reviewCount : null,
         breakfast: bFast ? await getAttribute(bFast, 'textContent') : null,
         checkInFrom: cMatch && cMatch.length > 1 ? cMatch[0] : null,
         checkInTo: cMatch && cMatch.length > 1 ? cMatch[1] : null,
@@ -209,6 +211,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         image: img1 || img2 || (img3 ? img3[1] : null),
         rooms,
         images,
+        reviews,
     };
 };
 
@@ -290,7 +293,7 @@ module.exports.listPageFunction = (input) => {
                     return getPrices().length > 0;
                 },
                 () => {
-                    const { origin } = window.location.origin;
+                    const { origin } = window.location;
                     const roomLinkFirstOpt = jThis.find('.room_link span').eq(0).contents();
                     const strongRoomLinks = jThis.find('.room_link strong');
                     const roomLinkSecondOpt = strongRoomLinks.length
@@ -379,4 +382,24 @@ const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
     }
 
     return page.evaluate(extractSimpleRoomsInfo);
+};
+
+/**
+ * Up to 10 reviews can be scraped from detail page directly.
+ * They're stored in a JavaScript variable `exportedVars`
+ * in one of the <script nonce=".*">.
+ * @param {string} html
+ */
+const extractReviews = (html) => {
+    const EXPORTED_VARS_REGEX = /(?<!\w)(?:<script nonce=".*">.*exportedVars = JSON.parse\(')(.*)?(?:'(?: )?\|\|(?: )?'{}'\);)/gis;
+
+    // exec() needs to be used instead of match() to make capturing group work properly
+    const matches = EXPORTED_VARS_REGEX.exec(html);
+    const exportedVarsMatch = matches[1] || '';
+    const escapedExportedVars = exportedVarsMatch.replaceAll('\\', '');
+    const exportedVars = JSON.parse(escapedExportedVars);
+
+    const { fe_featured_reviews: reviews } = exportedVars;
+
+    return reviews;
 };

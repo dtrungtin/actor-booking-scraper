@@ -25,6 +25,9 @@ module.exports = async (context, globalContext) => {
 const handleDetailPage = async ({ page, input, userData, session, extendOutputFunction }) => {
     const { startUrls, minScore } = input;
 
+    // const html = await page.content();
+    // await Apify.setValue('PAGE', html, { contentType: 'text/html' });
+
     await waitForDetailPageToLoad(page);
 
     const ldElem = await page.$('script[type="application/ld+json"]');
