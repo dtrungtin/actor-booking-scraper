@@ -1,3 +1,5 @@
+const vm = require('vm');
+const { decode } = require('html-entities');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const { EXPORTED_VARS_REGEX } = require('./consts.js'); // eslint-disable-line
 const { getAttribute, addUrlParameters } = require('./util.js'); // eslint-disable-line
@@ -192,8 +194,6 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const homeType = hType ? await getAttribute(hType, 'textContent') : null;
     const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
 
-    const reviews = extractReviews(html);
-
     return {
         order: userData.order,
         url: addUrlParameters(page.url().split('?')[0], input),
@@ -212,7 +212,6 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         image: img1 || img2 || (img3 ? img3[1] : null),
         rooms,
         images,
-        reviews,
     };
 };
 
@@ -385,21 +384,34 @@ const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
     return page.evaluate(extractSimpleRoomsInfo);
 };
 
+module.exports.extractCategoryReviews = (html) => {
+
+};
+
 /**
  * Up to 10 reviews can be scraped from the detail page directly.
  * They're stored in a JavaScript variable `exportedVars`
  * in one of the <script nonce=".*">.
  * @param {string} html
  */
-const extractReviews = (html) => {
+ module.exports.extractUserReviews = (html) => {
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
-    const exportedVarsMatch = matches[1] || '';
-    const escapedExportedVars = exportedVarsMatch.replaceAll('\\', '');
-    const exportedVars = JSON.parse(escapedExportedVars);
+    const exportedVarsMatch = matches ? matches[1] : '';
 
-    const { fe_featured_reviews: reviews } = exportedVars;
-    const parsedReviews = parseReviews(reviews);
+    const context = { exportedVars: {} };
+    vm.createContext(context);
+
+    const jsonParseCode = exportedVarsMatch
+        .replace(/((\\r)?\\n)|(\\r)/gi, ' ') // replace newline characters with whitespaces
+        .replace(/( )+/g, ' '); // replace multiple whitespaces with 1;
+
+    vm.runInContext(jsonParseCode, context);
+
+    const { exportedVars } = context;
+
+    const { fe_featured_reviews: featuredReviews } = exportedVars;
+    const parsedReviews = featuredReviews ? parseReviews(featuredReviews) : [];
 
     return parsedReviews;
 };

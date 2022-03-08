@@ -19,5 +19,5 @@ module.exports = {
         'Holiday parks': 212,
         'Luxury tents': 224,
     },
-    EXPORTED_VARS_REGEX: /(?<!\w)(?:<script nonce=".*">.*exportedVars = JSON.parse\(')(.*)?(?:'(?: )?\|\|(?: )?'{}'\);)/gis,
+    EXPORTED_VARS_REGEX: /(?:var )(exportedVars = JSON.parse\('.*'( )?\|\|( )?'{}'\);)/is,
 };
