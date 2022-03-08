@@ -1,4 +1,5 @@
 const Puppeteer = require('puppeteer'); // eslint-disable-line
+const { EXPORTED_VARS_REGEX } = require('./consts.js'); // eslint-disable-line
 const { getAttribute, addUrlParameters } = require('./util.js'); // eslint-disable-line
 
 /**
@@ -385,21 +386,52 @@ const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
 };
 
 /**
- * Up to 10 reviews can be scraped from detail page directly.
+ * Up to 10 reviews can be scraped from the detail page directly.
  * They're stored in a JavaScript variable `exportedVars`
  * in one of the <script nonce=".*">.
  * @param {string} html
  */
 const extractReviews = (html) => {
-    const EXPORTED_VARS_REGEX = /(?<!\w)(?:<script nonce=".*">.*exportedVars = JSON.parse\(')(.*)?(?:'(?: )?\|\|(?: )?'{}'\);)/gis;
-
-    // exec() needs to be used instead of match() to make capturing group work properly
+    // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
     const exportedVarsMatch = matches[1] || '';
     const escapedExportedVars = exportedVarsMatch.replaceAll('\\', '');
     const exportedVars = JSON.parse(escapedExportedVars);
 
     const { fe_featured_reviews: reviews } = exportedVars;
+    const parsedReviews = parseReviews(reviews);
 
-    return reviews;
+    return parsedReviews;
+};
+
+const parseReviews = (reviews) => {
+    const parsedReviews = reviews.map((review) => {
+        const {
+            b_title: title,
+            b_average_score_out_of_10: score,
+            b_hotel_positive: positive,
+            b_hotel_negative: negative,
+            b_guest_name: guestName,
+            b_completed_date: date,
+            b_language: language,
+            b_country_name: country,
+            b_guest_countrycode: countryCode,
+            b_user_uploaded_photos: uploadedPhotos,
+        } = review;
+
+        const photos = uploadedPhotos ? uploadedPhotos.map((photo) => photo.max1280x900) : [];
+
+        return { title, score, positive, negative, guestName, date, language, country, countryCode, photos };
+    }).map((review) => {
+        const normalizedReview = { ...review };
+
+        Object.keys(normalizedReview).forEach((key) => {
+            // store null instead of an empty string
+            normalizedReview[key] = normalizedReview[key] || null;
+        });
+
+        return normalizedReview;
+    });
+
+    return parsedReviews;
 };
