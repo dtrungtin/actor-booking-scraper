@@ -1,9 +1,9 @@
 const Apify = require('apify');
 
 const { extractDetail, listPageFunction, extractUserReviews } = require('./extraction');
-const { getAttribute, addUrlParameters, fixUrl, isObject, enqueueFilterLinks, enqueueAllPages } = require('./util');
+const { getAttribute, addUrlParameters, fixUrl, isObject, enqueueFilterLinks, enqueueAllPages, enqueueAllReviewsPages } = require('./util');
 
-const { MAX_PAGES, RESULTS_PER_PAGE } = require('./consts');
+const { MAX_PAGES, RESULTS_PER_PAGE, LABELS } = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -15,10 +15,12 @@ module.exports = async (context, globalContext) => {
 
     log.info(`open url(${label}): ${url}`);
 
-    if (label === 'detail') {
+    if (label === LABELS.DETAIL) {
         await handleDetailPage({ page, input, userData, session, extendOutputFunction });
-    } else {
+    } else if (label === LABELS.START || LABELS.PAGE) {
         await handleListPage({ page, request, session, requestQueue }, globalContext);
+    } else if (label === LABELS.REVIEW) {
+        // TODO
     }
 };
 
@@ -48,7 +50,6 @@ const handleDetailPage = async ({ page, input, userData, session, extendOutputFu
     log.info('detail extracted');
 
     const userReviews = extractUserReviews(html, extractReviewerName);
-
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
     await Apify.pushData({ ...detail, userReviews, ...userResult });
@@ -79,7 +80,7 @@ const handleListPage = async ({ page, request, session, requestQueue }, globalCo
         await enqueueDetailPages(page, input, requestQueue);
     }
 
-    const isStartPage = label !== 'page';
+    const isStartPage = label === LABELS.START;
     if (isStartPage) {
         await handleStartPage({ page, request, requestQueue }, globalContext);
     }
@@ -139,6 +140,12 @@ const enqueuePaginationPages = async ({ page, requestQueue }, globalContext) => 
     }
 };
 
+const enqueueReviewsPaginationPages = async ({ page, requestQueue }, globalContext) => {
+    if (globalContext.remainingReviewsPages > 0) {
+        await enqueueAllReviewsPages(page, requestQueue, globalContext);
+    }
+};
+
 const enqueueFilteredPages = async ({ page, request, requestQueue }, globalContext) => {
     log.info('enqueuing filtered pages...');
 
@@ -146,7 +153,7 @@ const enqueueFilteredPages = async ({ page, request, requestQueue }, globalConte
     const unchecked = `[type="checkbox"][${attribute}]:not([checked]):not(.bui-checkbox__input)`;
 
     const extractionInfo = { page, unchecked, attribute };
-    const urlInfo = { baseUrl: request.url, label: 'start' };
+    const urlInfo = { baseUrl: request.url, label: LABELS.START };
 
     await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue, globalContext);
 };
@@ -177,7 +184,7 @@ const enqueueDetailPages = async (page, input, requestQueue) => {
             await requestQueue.addRequest(
                 {
                     userData: {
-                        label: 'detail',
+                        label: LABELS.DETAIL,
                         order: iLink + firstItem,
                     },
                     url: urlModCal,

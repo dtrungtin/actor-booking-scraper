@@ -2,6 +2,7 @@ module.exports = {
     USER_AGENT:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
     MAX_PAGES: 40,
+    MAX_PAGINATION_PAGES: 1000000,
     RESULTS_PER_PAGE: 25,
     DATE_FORMAT: 'YYYY-MM-DD',
     PROPERTY_TYPE_IDS: {
@@ -20,4 +21,10 @@ module.exports = {
         'Luxury tents': 224,
     },
     EXPORTED_VARS_REGEX: /(?:var )(exportedVars = JSON.parse\('.*'( )?\|\|( )?'{}'\);)/is,
+    LABELS: {
+        START: 'START',
+        PAGE: 'PAGE',
+        DETAIL: 'DETAIL',
+        REVIEW: 'REVIEW',
+    },
 };
