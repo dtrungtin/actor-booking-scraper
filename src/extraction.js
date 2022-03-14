@@ -1,5 +1,4 @@
 const vm = require('vm');
-const { decode } = require('html-entities');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const { EXPORTED_VARS_REGEX } = require('./consts.js'); // eslint-disable-line
 const { getAttribute, addUrlParameters } = require('./util.js'); // eslint-disable-line
@@ -194,6 +193,8 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const homeType = hType ? await getAttribute(hType, 'textContent') : null;
     const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
 
+    const categoryReviews = await extractCategoryReviews(page);
+
     return {
         order: userData.order,
         url: addUrlParameters(page.url().split('?')[0], input),
@@ -212,6 +213,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         image: img1 || img2 || (img3 ? img3[1] : null),
         rooms,
         images,
+        categoryReviews,
     };
 };
 
@@ -384,8 +386,30 @@ const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
     return page.evaluate(extractSimpleRoomsInfo);
 };
 
-module.exports.extractCategoryReviews = (html) => {
+const extractCategoryReviews = async (page) => {
+    const categoryReviews = await page.evaluate(() => {
+        const CATEGORY_REVIEWS_SELECTOR = '.reviews-snippet-sidebar .review_list_score_container .v2_review-scores__wrapper li .c-score-bar';
+        const reviewElements = document.querySelectorAll(CATEGORY_REVIEWS_SELECTOR);
 
+        const reviews = [];
+
+        reviewElements.forEach((el) => {
+            const titleEl = el.querySelector('.c-score-bar__title');
+            const scoreEl = el.querySelector('.c-score-bar__score');
+
+            const title = titleEl ? titleEl.textContent.trim() : null;
+            const scoreText = scoreEl ? scoreEl.textContent.trim() : null;
+            const score = scoreText ? parseFloat(scoreText.replaceAll(',', '.')) : null;
+
+            if (title && score) {
+                reviews.push({ title, score });
+            }
+        });
+
+        return reviews;
+    });
+
+    return categoryReviews;
 };
 
 /**
@@ -394,7 +418,7 @@ module.exports.extractCategoryReviews = (html) => {
  * in one of the <script nonce=".*">.
  * @param {string} html
  */
- module.exports.extractUserReviews = (html) => {
+module.exports.extractUserReviews = (html) => {
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
     const exportedVarsMatch = matches ? matches[1] : '';

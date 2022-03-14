@@ -1,6 +1,6 @@
 const Apify = require('apify');
 
-const { extractDetail, listPageFunction, extractUserReviews, extractCategoryReviews } = require('./extraction');
+const { extractDetail, listPageFunction, extractUserReviews } = require('./extraction');
 const { getAttribute, addUrlParameters, fixUrl, isObject, enqueueFilterLinks, enqueueAllPages } = require('./util');
 
 const { MAX_PAGES, RESULTS_PER_PAGE } = require('./consts');
@@ -48,11 +48,10 @@ const handleDetailPage = async ({ page, input, userData, session, extendOutputFu
     log.info('detail extracted');
 
     const userReviews = extractUserReviews(html);
-    const categoryReviews = extractCategoryReviews(html);
 
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
-    await Apify.pushData({ ...detail, userReviews, categoryReviews, ...userResult });
+    await Apify.pushData({ ...detail, userReviews, ...userResult });
 };
 
 const handleListPage = async ({ page, request, session, requestQueue }, globalContext) => {
