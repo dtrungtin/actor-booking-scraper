@@ -17,6 +17,14 @@
             "maximum": 1000000,
             "prefill": 2
         },
+        "maxReviewsPages": {
+            "title": "Maximum reviews pagination pages",
+            "type": "integer",
+            "description": "Number of reviews pagination pages to be crawled. You'll automatically get up to 10 reviews from the detail page without setting this field and going through reviews pagination.",
+            "maximum": 1000000,
+            "prefill": 2,
+            "default": 0
+        },
         "simple": {
             "title": "Extract only basic information (no detail)",
             "type": "boolean",
