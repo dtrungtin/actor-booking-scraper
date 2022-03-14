@@ -23,7 +23,7 @@ module.exports = async (context, globalContext) => {
 };
 
 const handleDetailPage = async ({ page, input, userData, session, extendOutputFunction }) => {
-    const { startUrls, minScore } = input;
+    const { startUrls, minScore, extractReviewerName = false } = input;
 
     const html = await page.content();
     await Apify.setValue('PAGE', html, { contentType: 'text/html' });
@@ -47,7 +47,7 @@ const handleDetailPage = async ({ page, input, userData, session, extendOutputFu
     const detail = await extractDetail(page, ld, input, userData);
     log.info('detail extracted');
 
-    const userReviews = extractUserReviews(html);
+    const userReviews = extractUserReviews(html, extractReviewerName);
 
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 

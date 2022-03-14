@@ -350,6 +350,12 @@
             "editor": "textfield",
             "prefill": "100-150"
         },
+        "scrapeReviewerName": {
+            "title": "Reviewer name",
+            "type": "boolean",
+            "description": "Extract reviewer name only if you have a legit reason to do so.",
+            "default": false
+        },
         "proxyConfig": {
             "title": "Proxy Configuration",
             "type": "object",

@@ -417,8 +417,9 @@ const extractCategoryReviews = async (page) => {
  * They're stored in a JavaScript variable `exportedVars`
  * in one of the <script nonce=".*">.
  * @param {string} html
+ * @param {boolean} extractReviewerName
  */
-module.exports.extractUserReviews = (html) => {
+module.exports.extractUserReviews = (html, extractReviewerName) => {
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
     const exportedVarsMatch = matches ? matches[1] : '';
@@ -436,6 +437,10 @@ module.exports.extractUserReviews = (html) => {
 
     const { fe_featured_reviews: featuredReviews } = exportedVars;
     const parsedReviews = featuredReviews ? parseReviews(featuredReviews) : [];
+
+    if (!extractReviewerName) {
+        parsedReviews.forEach((review) => delete review.guestName);
+    }
 
     return parsedReviews;
 };
