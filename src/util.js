@@ -269,10 +269,11 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
  *
  * @param {Page} page - The Puppeteer page object.
  * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {{ input: Object, remainingPages: number }} globalContext - Actor's global context.
+ * @param {{ input: Object, state: { remainingPages: number } }} globalContext - Actor's global context.
  */
 module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
-    const { input } = globalContext;
+    const { input, state } = globalContext;
+
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
         log.info('enqueuing pagination pages...');
@@ -293,11 +294,11 @@ module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
                         ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
                         : `${pageUrl}&offset=${newOffset}`;
 
-                    if (globalContext.remainingPages < 1) {
+                    if (state.remainingPages < 1) {
                         break;
                     }
 
-                    globalContext.remainingPages--;
+                    state.remainingPages--;
 
                     await requestQueue.addRequest({
                         url: addUrlParameters(newUrl, input),
@@ -306,9 +307,13 @@ module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
                 }
             }
         } catch (e) {
-            log.info(e);
+            log.warning(e);
         }
     }
+};
+
+module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext) => {
+
 };
 
 module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
@@ -427,6 +432,8 @@ const haveSameQueryParamNames = (firstUrl, secondUrl) => {
 };
 
 const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls, globalContext) => {
+    const { state } = globalContext;
+
     for (const filter of filters) {
         const { name, values } = filter;
 
@@ -436,8 +443,8 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrl
             url.searchParams.set(name, value);
 
             // Check that url with the exact same filters and values doesn't exist already.
-            if (!enqueuedUrls.includes(url) && globalContext.remainingPages > 0) {
-                globalContext.remainingPages--;
+            if (!enqueuedUrls.includes(url) && state.remainingPages > 0) {
+                state.remainingPages--;
                 enqueuedUrls.push(url);
 
                 await requestQueue.addRequest({

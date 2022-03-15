@@ -1,5 +1,5 @@
 const Apify = require('apify');
-const { USER_AGENT } = require('./consts');
+const { USER_AGENT, MAX_PAGINATION_PAGES } = require('./consts');
 const { validateInput, cleanInput, evalExtendOutputFn } = require('./input');
 const { prepareRequestSources } = require('./start-urls');
 const ErrorSnapshotter = require('./error-snapshotter');
@@ -16,7 +16,8 @@ Apify.main(async () => {
     const {
         startUrls,
         sortBy = 'bayesian_review_score',
-        maxPages,
+        maxPages = MAX_PAGINATION_PAGES,
+        maxReviewsPages = MAX_PAGINATION_PAGES,
         proxyConfig = { useApifyProxy: true },
         enableAssets = false,
     } = input;
@@ -24,17 +25,27 @@ Apify.main(async () => {
     const errorSnapshotter = new ErrorSnapshotter();
     await errorSnapshotter.initialize(Apify.events);
 
-    const state = (await Apify.getValue('STATE')) || { crawled: {}, enqueuedUrls: [] };
+    const state = (await Apify.getValue('STATE')) || {
+        remainingPages: maxPages,
+        remainingReviewsPages: maxReviewsPages,
+        crawled: {},
+        enqueuedUrls: [],
+    };
 
     Apify.events.on('persistState', async () => {
         await Apify.setValue('STATE', state);
     });
 
-    const remainingPages = maxPages || Number.MAX_SAFE_INTEGER; // initialized as max integer to avoid undefined check
-    const requestQueue = await Apify.openRequestQueue();
-    const globalContext = { input, extendOutputFunction, sortBy, state, remainingPages };
+    const globalContext = {
+        input,
+        extendOutputFunction,
+        sortBy,
+        state,
+    };
 
-    const { requestSources } = await prepareRequestSources({ startUrls, input, sortBy }, globalContext);
+    const requestQueue = await Apify.openRequestQueue();
+
+    const { requestSources } = await prepareRequestSources({ startUrls, input }, globalContext);
     const requestList = await Apify.openRequestList('LIST', requestSources);
     const proxyConfiguration = (await Apify.createProxyConfiguration(proxyConfig)) || undefined;
 

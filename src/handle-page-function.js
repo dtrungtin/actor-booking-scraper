@@ -80,14 +80,13 @@ const handleListPage = async ({ page, request, session, requestQueue }, globalCo
         await enqueueDetailPages(page, input, requestQueue);
     }
 
-    const isStartPage = label === LABELS.START;
-    if (isStartPage) {
+    if (label === LABELS.START) {
         await handleStartPage({ page, request, requestQueue }, globalContext);
     }
 };
 
 const handleStartPage = async ({ page, request, requestQueue }, globalContext) => {
-    const { input, remainingPages } = globalContext;
+    const { input, state: { remainingPages } } = globalContext;
     const { useFilters } = input;
 
     const totalResults = await getTotalListingsCount(page);
@@ -135,13 +134,13 @@ const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExte
 };
 
 const enqueuePaginationPages = async ({ page, requestQueue }, globalContext) => {
-    if (globalContext.remainingPages > 0) {
+    if (globalContext.state.remainingPages > 0) {
         await enqueueAllPages(page, requestQueue, globalContext);
     }
 };
 
 const enqueueReviewsPaginationPages = async ({ page, requestQueue }, globalContext) => {
-    if (globalContext.remainingReviewsPages > 0) {
+    if (globalContext.state.remainingReviewsPages > 0) {
         await enqueueAllReviewsPages(page, requestQueue, globalContext);
     }
 };

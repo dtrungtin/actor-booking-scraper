@@ -5,7 +5,9 @@ const { addUrlParameters } = require('./util');
 
 const { downloadListOfUrls, log } = Apify.utils;
 
-module.exports.prepareRequestSources = async ({ startUrls, input }, globalContext) => {
+module.exports.prepareRequestSources = async ({ startUrls }, globalContext) => {
+    const { input } = globalContext;
+
     const requestSources = [];
     let startUrl;
 
@@ -18,18 +20,21 @@ module.exports.prepareRequestSources = async ({ startUrls, input }, globalContex
             input,
         );
     } else {
-        startUrl = buildStartUrlFromInput(input, globalContext.sortBy);
+        startUrl = buildStartUrlFromInput(globalContext);
 
-        const requests = buildRequestsFromInput(startUrl, globalContext, input);
+        const requests = buildRequestsFromInput(startUrl, globalContext);
         requestSources.push(...requests);
     }
 
     return { requestSources, startUrl };
 };
 
-const buildStartUrlFromInput = (input, sortBy) => {
-    const dType = input.destType || 'city';
-    const query = encodeURIComponent(input.search);
+const buildStartUrlFromInput = (globalContext) => {
+    const { input, sortBy } = globalContext;
+    const { destType, search } = input;
+
+    const dType = destType || 'city';
+    const query = encodeURIComponent(search);
 
     const startUrl = addUrlParameters(
         `https://www.booking.com/searchresults.html?dest_type=${dType}&ss=${query}&order=${sortBy}`,
@@ -84,27 +89,29 @@ const buildRequestsFromStartUrls = async (startUrls, input) => {
 /**
  * Creates start requests from the provided input for all pagination pages.
  * @param {string} startUrl
- * @param {{ remainingPages: number }} globalContext
- * @param {Record<string, any>} input
+ * @param {{
+ *  input: Record<string, any>,
+ *  state: { remainingPages: number }}} globalContext
  * @returns
  */
-const buildRequestsFromInput = (startUrl, globalContext, input) => {
+const buildRequestsFromInput = (startUrl, globalContext) => {
+    const { input, state } = globalContext;
     const { useFilters, minMaxPrice, propertyType } = input;
 
     const requests = [];
 
-    if (globalContext.remainingPages > 0) {
+    if (state.remainingPages > 0) {
         const request = {
             url: startUrl,
             userData: { label: LABELS.START },
         };
 
         requests.push(request);
-        globalContext.remainingPages--;
+        state.remainingPages--;
 
         if (!useFilters && minMaxPrice === 'none' && propertyType === 'none') {
             for (let i = 1; i < MAX_PAGES; i++) {
-                if (globalContext.remainingPages < 1) {
+                if (state.remainingPages < 1) {
                     break;
                 }
 
@@ -112,7 +119,7 @@ const buildRequestsFromInput = (startUrl, globalContext, input) => {
                     url: `${startUrl}&offset=${RESULTS_PER_PAGE * i}`,
                     userData: { label: LABELS.PAGE },
                 });
-                globalContext.remainingPages--;
+                state.remainingPages--;
             }
         }
     }
