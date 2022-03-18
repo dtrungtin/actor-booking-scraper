@@ -1,5 +1,5 @@
 const Apify = require('apify');
-const { RESULTS_PER_PAGE, MAX_PAGES, LABELS } = require('./consts');
+const { RESULTS_PER_PAGE, MAX_PAGES, LABELS, REDUCER_ACTION_TYPES } = require('./consts');
 
 const { addUrlParameters } = require('./util');
 
@@ -91,27 +91,31 @@ const buildRequestsFromStartUrls = async (startUrls, input) => {
  * @param {string} startUrl
  * @param {{
  *  input: Record<string, any>,
- *  state: { remainingPages: number }}} globalContext
+ *  store: { state: { remainingPages: number } } }} globalContext
  * @returns
  */
 const buildRequestsFromInput = (startUrl, globalContext) => {
-    const { input, state } = globalContext;
+    const { input, store } = globalContext;
     const { useFilters, minMaxPrice, propertyType } = input;
+    const { DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
 
     const requests = [];
 
-    if (state.remainingPages > 0) {
+    if (store.state.remainingPages > 0) {
         const request = {
             url: startUrl,
             userData: { label: LABELS.START },
         };
 
         requests.push(request);
-        state.remainingPages--;
+
+        store.setWithReducer({
+            type: DECREMENT_REMAINING_PAGES,
+        });
 
         if (!useFilters && minMaxPrice === 'none' && propertyType === 'none') {
             for (let i = 1; i < MAX_PAGES; i++) {
-                if (state.remainingPages < 1) {
+                if (store.state.remainingPages < 1) {
                     break;
                 }
 
@@ -119,7 +123,10 @@ const buildRequestsFromInput = (startUrl, globalContext) => {
                     url: `${startUrl}&offset=${RESULTS_PER_PAGE * i}`,
                     userData: { label: LABELS.PAGE },
                 });
-                state.remainingPages--;
+
+                store.setWithReducer({
+                    type: DECREMENT_REMAINING_PAGES,
+                });
             }
         }
     }

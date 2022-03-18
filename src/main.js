@@ -4,6 +4,7 @@ const { validateInput, cleanInput, evalExtendOutputFn } = require('./input');
 const { prepareRequestSources } = require('./start-urls');
 const ErrorSnapshotter = require('./error-snapshotter');
 const handlePageFunctionExtended = require('./handle-page-function');
+const { initializeGlobalStore } = require('./global-store');
 
 const { log } = Apify.utils;
 
@@ -25,22 +26,13 @@ Apify.main(async () => {
     const errorSnapshotter = new ErrorSnapshotter();
     await errorSnapshotter.initialize(Apify.events);
 
-    const state = (await Apify.getValue('STATE')) || {
-        remainingPages: maxPages,
-        remainingReviewsPages: maxReviewsPages,
-        crawled: {},
-        enqueuedUrls: [],
-    };
-
-    Apify.events.on('persistState', async () => {
-        await Apify.setValue('STATE', state);
-    });
+    const store = await initializeGlobalStore(maxPages, maxReviewsPages);
 
     const globalContext = {
         input,
         extendOutputFunction,
         sortBy,
-        state,
+        store,
     };
 
     const requestQueue = await Apify.openRequestQueue();

@@ -10,6 +10,7 @@ const {
     REVIEWS_RESULTS_PER_REQUEST,
     PLACE_COUNTRY_URL_CODE_REGEX,
     LABELS,
+    REDUCER_ACTION_TYPES,
 } = require('./consts');
 
 const { log } = Apify.utils;
@@ -277,10 +278,11 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
  *
  * @param {Page} page - The Puppeteer page object.
  * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {{ input: Object, state: { remainingPages: number } }} globalContext - Actor's global context.
+ * @param {{ input: Object, store: { state: { remainingPages: number } } }} globalContext - Actor's global context.
  */
-module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
-    const { input, state } = globalContext;
+module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalContext) => {
+    const { input, store } = globalContext;
+    const { DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
 
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
@@ -302,11 +304,13 @@ module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
                         ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
                         : `${pageUrl}&offset=${newOffset}`;
 
-                    if (state.remainingPages < 1) {
+                    if (store.state.remainingPages < 1) {
                         break;
                     }
 
-                    state.remainingPages--;
+                    store.setWithReducer({
+                        type: DECREMENT_REMAINING_PAGES,
+                    });
 
                     await requestQueue.addRequest({
                         url: addUrlParameters(newUrl, input),
@@ -321,7 +325,7 @@ module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
 };
 
 module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext) => {
-    const { state } = globalContext;
+    const { store } = globalContext;
 
     const detailPageUrl = await page.url();
 
@@ -331,30 +335,24 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext
     log.info(`Found ${reviewsCount} reviews`, { detailPageUrl });
     log.info(`Enqueuing reviews pages...`);
 
-    let enqueuedReviews = 0;
+    const requestsToEnqueue = getReviewPagesRequests(store, reviewsUrl, reviewsCount);
 
-    while (enqueuedReviews < reviewsCount) {
-        if (state.remainingReviewsPages === 0) {
-            log.info('Reached maximum reviews pages limit.');
-            return;
+    for (let index = 0; index < requestsToEnqueue.length; index++) {
+        const request = requestsToEnqueue[index];
+
+        const isLastRequest = requestsToEnqueue.length - 1;
+        if (isLastRequest) {
+            request.userData.isLastReviewPage = true;
         }
 
-        reviewsUrl.searchParams.set('offset', enqueuedReviews);
-        await requestQueue.addRequest({
-            url: reviewsUrl.toString(),
-            userData: { label: LABELS.REVIEW },
-        });
-        log.info('Enqueued url', { url: reviewsUrl.toString() });
-
-        enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST;
-        state.remainingReviewsPages--;
+        await requestQueue.addRequest(request);
     }
 };
 
 module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
     const { page, unchecked, attribute } = extractionInfo;
     const { label, baseUrl } = urlInfo;
-    const { state: { enqueuedUrls } } = globalContext;
+    const { store: { state: { useFiltersData: { enqueuedUrls } } } } = globalContext;
 
     const url = new URL(baseUrl);
 
@@ -369,7 +367,7 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
         log.info(`enqueuing pages with ${filtersToEnqueue.length} new filters set...`);
     }
 
-    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls, globalContext);
+    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, globalContext);
 };
 
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
@@ -412,6 +410,36 @@ const extractReviewsCount = async (page) => {
     const reviewsCount = parseInt(reviewsCountText.replace(/[^\d]+/g, ''), 10);
 
     return reviewsCount;
+};
+
+const getReviewPagesRequests = (store, reviewsUrl, reviewsCount) => {
+    const { state: { remainingReviewsPages } } = store;
+    const { DECREMENT_REMAINING_REVIEWS_PAGES } = REDUCER_ACTION_TYPES;
+
+    const requestsToEnqueue = [];
+    let enqueuedReviews = 0;
+
+    while (enqueuedReviews < reviewsCount) {
+        if (remainingReviewsPages === 0) {
+            log.info('Reached maximum reviews pages limit.');
+            break;
+        }
+
+        reviewsUrl.searchParams.set('offset', enqueuedReviews);
+
+        requestsToEnqueue.push({
+            url: reviewsUrl.toString(),
+            userData: { label: LABELS.REVIEW },
+        });
+
+        enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST;
+
+        store.setWithReducer({
+            type: DECREMENT_REMAINING_REVIEWS_PAGES,
+        });
+    }
+
+    return requestsToEnqueue;
 };
 
 const getFilterNameValues = async (elements, attribute) => {
@@ -506,8 +534,10 @@ const haveSameQueryParamNames = (firstUrl, secondUrl) => {
     return true;
 };
 
-const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls, globalContext) => {
-    const { state } = globalContext;
+const enqueueFilters = async (filters, requestQueue, label, baseUrl, globalContext) => {
+    const { store } = globalContext;
+    const { state: { remainingPages, useFiltersData: { enqueuedUrls } } } = store;
+    const { ADD_ENQUEUED_URL, DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
 
     for (const filter of filters) {
         const { name, values } = filter;
@@ -518,9 +548,14 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrl
             url.searchParams.set(name, value);
 
             // Check that url with the exact same filters and values doesn't exist already.
-            if (!enqueuedUrls.includes(url) && state.remainingPages > 0) {
-                state.remainingPages--;
-                enqueuedUrls.push(url);
+            if (!enqueuedUrls.includes(url) && remainingPages > 0) {
+                store.setWithReducer({
+                    type: ADD_ENQUEUED_URL,
+                    enqueuedUrl: url,
+                });
+                store.setWithReducer({
+                    type: DECREMENT_REMAINING_PAGES,
+                });
 
                 await requestQueue.addRequest({
                     url: url.toString(),
