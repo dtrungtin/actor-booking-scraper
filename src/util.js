@@ -2,7 +2,15 @@ const Apify = require('apify');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const moment = require('moment');
 
-const { DATE_FORMAT, PROPERTY_TYPE_IDS, RESULTS_PER_PAGE } = require('./consts');
+const {
+    DATE_FORMAT,
+    PROPERTY_TYPE_IDS,
+    RESULTS_PER_PAGE,
+    PLACE_URL_NAME_REGEX,
+    REVIEWS_RESULTS_PER_REQUEST,
+    PLACE_COUNTRY_URL_CODE_REGEX,
+    LABELS,
+} = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -313,7 +321,34 @@ module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
 };
 
 module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext) => {
+    const { state } = globalContext;
 
+    const detailPageUrl = await page.url();
+
+    const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
+    const reviewsCount = await extractReviewsCount(page);
+
+    log.info(`Found ${reviewsCount} reviews`, { detailPageUrl });
+    log.info(`Enqueuing reviews pages...`);
+
+    let enqueuedReviews = 0;
+
+    while (enqueuedReviews < reviewsCount) {
+        if (state.remainingReviewsPages === 0) {
+            log.info('Reached maximum reviews pages limit.');
+            return;
+        }
+
+        reviewsUrl.searchParams.set('offset', enqueuedReviews);
+        await requestQueue.addRequest({
+            url: reviewsUrl.toString(),
+            userData: { label: LABELS.REVIEW },
+        });
+        log.info('Enqueued url', { url: reviewsUrl.toString() });
+
+        enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST;
+        state.remainingReviewsPages--;
+    }
 };
 
 module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
@@ -338,6 +373,46 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
 };
 
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
+
+const buildReviewsStartUrl = (detailPageUrl) => {
+    const url = new URL(detailPageUrl);
+    const { searchParams } = url;
+
+    const reviewsUrl = new URL('https://www.booking.com/reviewlist.cs.html');
+
+    // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
+    const placeNameMatches = PLACE_URL_NAME_REGEX.exec(detailPageUrl);
+    const placeNameMatch = placeNameMatches ? placeNameMatches[1] : '';
+
+    const placeCountryMatches = PLACE_COUNTRY_URL_CODE_REGEX.exec(detailPageUrl);
+    const placeCountryMatch = placeCountryMatches ? placeCountryMatches[1] : '';
+
+    const reviewUrlParams = {
+        aid: searchParams.get('aid'),
+        label: searchParams.get('label'),
+        sid: searchParams.get('sid'),
+        srpvid: searchParams.get('srpvid'),
+        pagename: placeNameMatch,
+        cc1: placeCountryMatch,
+        rows: REVIEWS_RESULTS_PER_REQUEST,
+        offset: 0,
+    };
+
+    Object.keys(reviewUrlParams).forEach((key) => {
+        reviewsUrl.searchParams.set(key, reviewUrlParams[key]);
+    });
+
+    return reviewsUrl;
+};
+
+const extractReviewsCount = async (page) => {
+    const reviewsCountSelector = '[data-testid="review-score-component"] ._1e6021d2f';
+    const reviewsCountEl = await page.$(reviewsCountSelector);
+    const reviewsCountText = await getAttribute(reviewsCountEl, 'textContent');
+    const reviewsCount = parseInt(reviewsCountText.replace(/[^\d]+/g, ''), 10);
+
+    return reviewsCount;
+};
 
 const getFilterNameValues = async (elements, attribute) => {
     const nameValues = {};

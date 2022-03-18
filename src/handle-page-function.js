@@ -9,22 +9,24 @@ const { log } = Apify.utils;
 
 module.exports = async (context, globalContext) => {
     const { page, request, session, crawler: { requestQueue } } = context;
-    const { input, extendOutputFunction } = globalContext;
     const { url, userData } = request;
     const { label } = userData;
 
     log.info(`open url(${label}): ${url}`);
 
     if (label === LABELS.DETAIL) {
-        await handleDetailPage({ page, input, userData, session, extendOutputFunction });
+        await handleDetailPage(context, globalContext);
     } else if (label === LABELS.START || LABELS.PAGE) {
         await handleListPage({ page, request, session, requestQueue }, globalContext);
     } else if (label === LABELS.REVIEW) {
-        // TODO
+        await handleReviewPage(context, globalContext);
     }
 };
 
-const handleDetailPage = async ({ page, input, userData, session, extendOutputFunction }) => {
+const handleDetailPage = async (context, globalContext) => {
+    const { page, crawler: { requestQueue }, request: { userData }, session } = context;
+    const { input, extendOutputFunction } = globalContext;
+
     const { startUrls, minScore, extractReviewerName = false } = input;
 
     const html = await page.content();
@@ -53,6 +55,8 @@ const handleDetailPage = async ({ page, input, userData, session, extendOutputFu
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
     await Apify.pushData({ ...detail, userReviews, ...userResult });
+
+    await enqueueReviewsPaginationPages({ page, requestQueue }, globalContext);
 };
 
 const handleListPage = async ({ page, request, session, requestQueue }, globalContext) => {
@@ -112,6 +116,10 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
     if (!usingFilters) {
         await enqueuePaginationPages({ page, requestQueue }, globalContext);
     }
+};
+
+const handleReviewPage = async (context, globalContext) => {
+
 };
 
 const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {

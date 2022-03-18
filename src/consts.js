@@ -4,6 +4,7 @@ module.exports = {
     MAX_PAGES: 40,
     MAX_PAGINATION_PAGES: 1000000,
     RESULTS_PER_PAGE: 25,
+    REVIEWS_RESULTS_PER_REQUEST: 25,
     DATE_FORMAT: 'YYYY-MM-DD',
     PROPERTY_TYPE_IDS: {
         Hotels: 204,
@@ -20,7 +21,11 @@ module.exports = {
         'Holiday parks': 212,
         'Luxury tents': 224,
     },
+
     EXPORTED_VARS_REGEX: /(?:var )(exportedVars = JSON.parse\('.*'( )?\|\|( )?'{}'\);)/is,
+    PLACE_URL_NAME_REGEX: /http(?:s)?:\/\/www\.booking.com\/.+\/([-a-z0-9]+)(?:\.[a-z]+)?\.html/i,
+    PLACE_COUNTRY_URL_CODE_REGEX: /http(?:s)?:\/\/www\.booking.com\/.+\/(.+)\//,
+
     LABELS: {
         START: 'START',
         PAGE: 'PAGE',
