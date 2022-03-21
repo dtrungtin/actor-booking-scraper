@@ -2,6 +2,7 @@ const Apify = require('apify');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const moment = require('moment');
 
+const { GlobalStore } = require('apify-global-store');
 const {
     DATE_FORMAT,
     PROPERTY_TYPE_IDS,
@@ -278,11 +279,13 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
  *
  * @param {Page} page - The Puppeteer page object.
  * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {{ input: Object, store: { state: { remainingPages: number } } }} globalContext - Actor's global context.
+ * @param {{ input: Object }} globalContext - Actor's global context.
  */
 module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalContext) => {
-    const { input, store } = globalContext;
+    const { input } = globalContext;
     const { DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
+
+    const store = GlobalStore.summon();
 
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
@@ -324,9 +327,7 @@ module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalCont
     }
 };
 
-module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext) => {
-    const { store } = globalContext;
-
+module.exports.enqueueAllReviewsPages = async (page, requestQueue) => {
     const detailPageUrl = await page.url();
 
     const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
@@ -335,7 +336,7 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext
     log.info(`Found ${reviewsCount} reviews`, { detailPageUrl });
     log.info(`Enqueuing reviews pages...`);
 
-    const requestsToEnqueue = getReviewPagesRequests(store, reviewsUrl, reviewsCount);
+    const requestsToEnqueue = getReviewPagesRequests(reviewsUrl, reviewsCount);
 
     for (let index = 0; index < requestsToEnqueue.length; index++) {
         const request = requestsToEnqueue[index];
@@ -349,10 +350,12 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, globalContext
     }
 };
 
-module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
+module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue) => {
     const { page, unchecked, attribute } = extractionInfo;
     const { label, baseUrl } = urlInfo;
-    const { store: { state: { useFiltersData: { enqueuedUrls } } } } = globalContext;
+
+    const store = GlobalStore.summon();
+    const { state: { useFiltersData: { enqueuedUrls } } } = store;
 
     const url = new URL(baseUrl);
 
@@ -367,7 +370,7 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
         log.info(`enqueuing pages with ${filtersToEnqueue.length} new filters set...`);
     }
 
-    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, globalContext);
+    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl);
 };
 
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
@@ -412,8 +415,10 @@ const extractReviewsCount = async (page) => {
     return reviewsCount;
 };
 
-const getReviewPagesRequests = (store, reviewsUrl, reviewsCount) => {
+const getReviewPagesRequests = (reviewsUrl, reviewsCount) => {
+    const store = GlobalStore.summon();
     const { state: { remainingReviewsPages } } = store;
+
     const { DECREMENT_REMAINING_REVIEWS_PAGES } = REDUCER_ACTION_TYPES;
 
     const requestsToEnqueue = [];
@@ -534,9 +539,10 @@ const haveSameQueryParamNames = (firstUrl, secondUrl) => {
     return true;
 };
 
-const enqueueFilters = async (filters, requestQueue, label, baseUrl, globalContext) => {
-    const { store } = globalContext;
+const enqueueFilters = async (filters, requestQueue, label, baseUrl) => {
+    const store = GlobalStore.summon();
     const { state: { remainingPages, useFiltersData: { enqueuedUrls } } } = store;
+
     const { ADD_ENQUEUED_URL, DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
 
     for (const filter of filters) {

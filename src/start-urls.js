@@ -1,4 +1,5 @@
 const Apify = require('apify');
+const { GlobalStore } = require('apify-global-store');
 const { RESULTS_PER_PAGE, MAX_PAGES, LABELS, REDUCER_ACTION_TYPES } = require('./consts');
 
 const { addUrlParameters } = require('./util');
@@ -89,17 +90,17 @@ const buildRequestsFromStartUrls = async (startUrls, input) => {
 /**
  * Creates start requests from the provided input for all pagination pages.
  * @param {string} startUrl
- * @param {{
- *  input: Record<string, any>,
- *  store: { state: { remainingPages: number } } }} globalContext
+ * @param {{ input: Record<string, any> }} globalContext
  * @returns
  */
 const buildRequestsFromInput = (startUrl, globalContext) => {
-    const { input, store } = globalContext;
+    const { input } = globalContext;
     const { useFilters, minMaxPrice, propertyType } = input;
     const { DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
 
     const requests = [];
+
+    const store = GlobalStore.summon();
 
     if (store.state.remainingPages > 0) {
         const request = {

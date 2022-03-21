@@ -1,7 +1,22 @@
 const Apify = require('apify');
 
-const { extractDetail, listPageFunction, extractUserReviews } = require('./extraction');
-const { getAttribute, addUrlParameters, fixUrl, isObject, enqueueFilterLinks, enqueueAllPaginationPages, enqueueAllReviewsPages } = require('./util');
+const { GlobalStore } = require('apify-global-store');
+
+const {
+    extractDetail,
+    listPageFunction,
+    extractUserReviews,
+} = require('./extraction');
+
+const {
+    getAttribute,
+    addUrlParameters,
+    fixUrl,
+    isObject,
+    enqueueFilterLinks,
+    enqueueAllPaginationPages,
+    enqueueAllReviewsPages,
+} = require('./util');
 
 const { MAX_PAGES, RESULTS_PER_PAGE, LABELS, REDUCER_ACTION_TYPES } = require('./consts');
 
@@ -25,7 +40,10 @@ module.exports = async (context, globalContext) => {
 
 const handleDetailPage = async (context, globalContext) => {
     const { page, crawler: { requestQueue }, request: { userData }, session } = context;
-    const { input, extendOutputFunction, store: { state: { remainingReviewsPages } } } = globalContext;
+    const { input, extendOutputFunction } = globalContext;
+
+    const store = GlobalStore.summon();
+    const { state: { remainingReviewsPages } } = store;
 
     const { startUrls, minScore, extractReviewerName = false } = input;
 
@@ -56,14 +74,14 @@ const handleDetailPage = async (context, globalContext) => {
 
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
     if (remainingReviewsPages > 0) {
-        await enqueueAllReviewsPages(page, requestQueue, globalContext);
+        await enqueueAllReviewsPages(page, requestQueue);
     } else {
         await Apify.pushData({ ...detail, userReviews, ...userResult });
     }
 };
 
 const handleListPage = async ({ page, request, session, requestQueue }, globalContext) => {
-    const { input, sortBy, store } = globalContext;
+    const { input, sortBy } = globalContext;
     const { startUrls, simple } = input;
     const { userData: { label } } = request;
 
@@ -80,7 +98,7 @@ const handleListPage = async ({ page, request, session, requestQueue }, globalCo
 
     if (simple) {
         // If simple output is enough, extract the data.
-        const results = await extractListPageResults(page, request, input, store);
+        const results = await extractListPageResults(page, request, input);
         await Apify.pushData(results);
     } else {
         // If not, enqueue the detail pages to be extracted.
@@ -93,8 +111,11 @@ const handleListPage = async ({ page, request, session, requestQueue }, globalCo
 };
 
 const handleStartPage = async ({ page, request, requestQueue }, globalContext) => {
-    const { input, store: { state: { remainingPages } } } = globalContext;
+    const { input } = globalContext;
     const { useFilters } = input;
+
+    const store = GlobalStore.summon();
+    const { state: { remainingPages } } = store;
 
     const totalResults = await getTotalListingsCount(page);
     const usingFilters = shouldUseFilters(totalResults, useFilters, remainingPages);
@@ -106,7 +127,7 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
      * at the beginning.
      */
     if (usingFilters) {
-        await enqueueFilteredPages({ page, request, requestQueue }, globalContext);
+        await enqueueFilteredPages({ page, request, requestQueue });
     }
 
     /**
@@ -146,7 +167,7 @@ const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExte
     return userResult;
 };
 
-const enqueueFilteredPages = async ({ page, request, requestQueue }, globalContext) => {
+const enqueueFilteredPages = async ({ page, request, requestQueue }) => {
     log.info('enqueuing filtered pages...');
 
     const attribute = 'value';
@@ -155,7 +176,7 @@ const enqueueFilteredPages = async ({ page, request, requestQueue }, globalConte
     const extractionInfo = { page, unchecked, attribute };
     const urlInfo = { baseUrl: request.url, label: LABELS.START };
 
-    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue, globalContext);
+    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue);
 };
 
 const enqueueDetailPages = async (page, input, requestQueue) => {
@@ -250,13 +271,14 @@ const getTotalListingsCount = async (page) => {
     return parseInt(heading.replace(/[^0-9]/g, ''), 10);
 };
 
-const extractListPageResults = async (page, request, input, store) => {
+const extractListPageResults = async (page, request, input) => {
     log.info('extracting data...');
     await Apify.utils.puppeteer.injectJQuery(page);
     const result = await page.evaluate(listPageFunction, input);
 
     const toBeAdded = [];
 
+    const store = GlobalStore.summon();
     const { state: { useFiltersData } } = store;
     const { ADD_CRAWLED_NAME } = REDUCER_ACTION_TYPES;
 

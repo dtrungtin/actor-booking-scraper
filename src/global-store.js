@@ -2,13 +2,15 @@ const { GlobalStore } = require('apify-global-store');
 const { REDUCER_ACTION_TYPES } = require('./consts');
 
 module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
-    const store = await GlobalStore.init('state', {
-        details: {},
-        remainingPages: maxPages,
-        remainingReviewsPages: maxReviewsPages,
-        useFiltersData: {
-            crawledNames: [],
-            enqueuedUrls: [],
+    const store = await GlobalStore.init({
+        initialState: {
+            details: {},
+            remainingPages: maxPages,
+            remainingReviewsPages: maxReviewsPages,
+            useFiltersData: {
+                crawledNames: [],
+                enqueuedUrls: [],
+            },
         },
     });
 

@@ -26,13 +26,13 @@ Apify.main(async () => {
     const errorSnapshotter = new ErrorSnapshotter();
     await errorSnapshotter.initialize(Apify.events);
 
-    const store = await initializeGlobalStore(maxPages, maxReviewsPages);
+    // Returns the store instance. This instance can be later retreived by calling GlobalStore.summon().
+    await initializeGlobalStore(maxPages, maxReviewsPages);
 
     const globalContext = {
         input,
         extendOutputFunction,
         sortBy,
-        store,
     };
 
     const requestQueue = await Apify.openRequestQueue();
