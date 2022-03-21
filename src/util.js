@@ -327,7 +327,7 @@ module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalCont
     }
 };
 
-module.exports.enqueueAllReviewsPages = async (page, requestQueue) => {
+module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailUrl) => {
     const detailPageUrl = await page.url();
 
     const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
@@ -336,12 +336,12 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue) => {
     log.info(`Found ${reviewsCount} reviews`, { detailPageUrl });
     log.info(`Enqueuing reviews pages...`);
 
-    const requestsToEnqueue = getReviewPagesRequests(reviewsUrl, reviewsCount);
+    const requestsToEnqueue = getReviewPagesRequests(reviewsUrl, reviewsCount, detailUrl);
 
     for (let index = 0; index < requestsToEnqueue.length; index++) {
         const request = requestsToEnqueue[index];
 
-        const isLastRequest = requestsToEnqueue.length - 1;
+        const isLastRequest = index === requestsToEnqueue.length - 1;
         if (isLastRequest) {
             request.userData.isLastReviewPage = true;
         }
@@ -415,9 +415,8 @@ const extractReviewsCount = async (page) => {
     return reviewsCount;
 };
 
-const getReviewPagesRequests = (reviewsUrl, reviewsCount) => {
+const getReviewPagesRequests = (reviewsUrl, reviewsCount, detailUrl) => {
     const store = GlobalStore.summon();
-    const { state: { remainingReviewsPages } } = store;
 
     const { DECREMENT_REMAINING_REVIEWS_PAGES } = REDUCER_ACTION_TYPES;
 
@@ -425,7 +424,8 @@ const getReviewPagesRequests = (reviewsUrl, reviewsCount) => {
     let enqueuedReviews = 0;
 
     while (enqueuedReviews < reviewsCount) {
-        if (remainingReviewsPages === 0) {
+        if (store.state.remainingReviewsPages <= 0) {
+            // We tolerate a few review pages over limit with respect to parallelization
             log.info('Reached maximum reviews pages limit.');
             break;
         }
@@ -434,7 +434,10 @@ const getReviewPagesRequests = (reviewsUrl, reviewsCount) => {
 
         requestsToEnqueue.push({
             url: reviewsUrl.toString(),
-            userData: { label: LABELS.REVIEW },
+            userData: {
+                label: LABELS.REVIEW,
+                detailUrl,
+            },
         });
 
         enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST;

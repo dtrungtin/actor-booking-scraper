@@ -24,6 +24,8 @@ const getGlobalStoreReducer = () => {
     const {
         DECREMENT_REMAINING_PAGES,
         DECREMENT_REMAINING_REVIEWS_PAGES,
+        ADD_DETAIL,
+        ADD_REVIEWS,
         ADD_CRAWLED_NAME,
         ADD_ENQUEUED_URL,
     } = REDUCER_ACTION_TYPES;
@@ -41,6 +43,28 @@ const getGlobalStoreReducer = () => {
                 return {
                     ...state,
                     remainingReviewsPages: state.remainingReviewsPages - 1,
+                };
+            case ADD_DETAIL:
+                return {
+                    ...state,
+                    details: {
+                        ...state.details,
+                        ...action.detail,
+                    },
+                };
+            case ADD_REVIEWS:
+                return {
+                    ...state,
+                    details: {
+                        ...state.details,
+                        [state.details[action.detailUrl]]: {
+                            ...state.details[action.detailUrl],
+                            reviews: [
+                                ...state.details[action.detailUrl].reviews,
+                                ...action.reviews,
+                            ],
+                        },
+                    },
                 };
             case ADD_CRAWLED_NAME:
                 return {

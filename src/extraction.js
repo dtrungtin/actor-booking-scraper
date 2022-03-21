@@ -445,6 +445,35 @@ module.exports.extractUserReviews = (html, extractReviewerName) => {
     return parsedReviews;
 };
 
+module.exports.extractReviews = async (page) => {
+    const extractedReviews = page.evaluate(() => {
+        const $ = window.jQuery;
+
+        const reviewBlocks = $('.c-review-block');
+        const reviews = $.map(reviewBlocks, (el) => {
+            const review = {
+                title: $(el).find('.c-review-block__title').text().trim() || null,
+                score: parseFloat($(el).find('.bui-review-score__badge').text().trim()) || null,
+                positive: $(el).find('.c-review__prefix--color-green').text().trim() || null,
+                negative: $(el).find('.lalala .c-review__body').text().trim() || null,
+                guestName: $(el).find('.bui-avatar-block__title').text().trim(),
+                travellerType: $(el).find('.review-panel-wide__traveller_type .bui-list__body').text().trim(),
+                room: $(el).find('.c-review-block__room-info-row .bui-list__body').text().trim() || null,
+                nightsStay: parseInt($(el).find('.c-review-block__stay-date .bui-list__body').text().trim(), 10),
+                date: $(el).find('.c-review-block__date').text().trim()
+                    .replace('Reviewed: ', ''),
+                country: $(el).find('.bui-avatar-block__subtitle').text().trim(),
+            };
+
+            return review;
+        });
+
+        return reviews;
+    });
+
+    return extractedReviews;
+};
+
 const parseReviews = (reviews) => {
     const parsedReviews = reviews.map((review) => {
         const {

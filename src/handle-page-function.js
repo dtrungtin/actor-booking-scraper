@@ -6,6 +6,7 @@ const {
     extractDetail,
     listPageFunction,
     extractUserReviews,
+    extractReviews,
 } = require('./extraction');
 
 const {
@@ -42,9 +43,6 @@ const handleDetailPage = async (context, globalContext) => {
     const { page, crawler: { requestQueue }, request: { userData }, session } = context;
     const { input, extendOutputFunction } = globalContext;
 
-    const store = GlobalStore.summon();
-    const { state: { remainingReviewsPages } } = store;
-
     const { startUrls, minScore, extractReviewerName = false } = input;
 
     const html = await page.content();
@@ -73,9 +71,12 @@ const handleDetailPage = async (context, globalContext) => {
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
-    if (remainingReviewsPages > 0) {
-        await enqueueAllReviewsPages(page, requestQueue);
+    const store = GlobalStore.summon();
+    if (store.state.remainingReviewsPages > 0) {
+        await enqueueAllReviewsPages(page, requestQueue, detail.url);
+        saveDetailIntoStore(detail);
     } else {
+        // Store userReviews extracted directly from detail page only if no reviews are scraped from extra requests.
         await Apify.pushData({ ...detail, userReviews, ...userResult });
     }
 };
@@ -145,7 +146,51 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
 };
 
 const handleReviewPage = async (context, globalContext) => {
+    const { page, request: { userData: { detailUrl, isLastReviewPage } } } = context;
+    const { input } = globalContext;
 
+    const { extractReviewerName = false } = input;
+
+    let reviews = await extractReviews(page);
+    if (!extractReviewerName) {
+        reviews = reviews.map((review) => {
+            const reviewWithoutGuestName = { ...review };
+            delete reviewWithoutGuestName.guestName;
+            return reviewWithoutGuestName;
+        });
+    }
+
+    const store = GlobalStore.summon();
+    const { ADD_REVIEWS } = REDUCER_ACTION_TYPES;
+
+    store.setWithReducer({
+        type: ADD_REVIEWS,
+        detailUrl,
+        reviews,
+    });
+
+    if (isLastReviewPage) {
+        log.info('Extracted all reviews, pushing result to the dataset...', { detailUrl });
+        store.pushPathToDataset(`details.${detailUrl}`);
+    }
+};
+
+const saveDetailIntoStore = (detail) => {
+    const { ADD_DETAIL } = REDUCER_ACTION_TYPES;
+
+    const store = GlobalStore.summon();
+
+    const storeDetail = {
+        ...detail,
+        reviews: [],
+    };
+
+    store.setWithReducer({
+        type: ADD_DETAIL,
+        detail: {
+            [detail.url]: storeDetail,
+        },
+    });
 };
 
 const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
