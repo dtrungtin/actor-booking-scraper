@@ -74,6 +74,7 @@
             "editor": "select",
             "description": "Hotel attribute by which the results will be ordered",
             "prefill": "distance_from_search",
+            "default": "distance_from_search",
             "enum": [
                 "upsort_bh",
                 "price",
@@ -106,6 +107,7 @@
             "type": "string",
             "description": "Currency code to be set on the site",
             "prefill": "USD",
+            "default": "USD",
             "enum": [
                 "ARS",
                 "AUD",
@@ -216,6 +218,7 @@
             "type": "string",
             "description": "Language code to be set on the site",
             "prefill": "en-us",
+            "default": "en-us",
             "enum": [
                 "en-gb",
                 "en-us",
