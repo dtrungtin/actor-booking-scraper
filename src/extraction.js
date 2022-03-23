@@ -451,17 +451,20 @@ module.exports.extractReviews = async (page) => {
 
         const reviewBlocks = $('.c-review-block');
         const reviews = $.map(reviewBlocks, (el) => {
+            const dateMatches = $(el).find('.c-review-block__date').text().trim()
+                .match(/([\d]{1,2}(.)+[\d]{4})/gi);
+
             const review = {
-                title: $(el).find('.c-review-block__title').text().trim() || null,
+                title: $(el).find('.c-review-block__title').first().text()
+                    .trim() || null,
                 score: parseFloat($(el).find('.bui-review-score__badge').text().trim()) || null,
-                positive: $(el).find('.c-review__prefix--color-green').text().trim() || null,
-                negative: $(el).find('.lalala .c-review__body').text().trim() || null,
+                positive: $(el).find('.c-review__inner--ltr .c-review__prefix--color-green .c-review__body').text().trim() || null,
+                negative: $(el).find('.c-review__inner--ltr :not(.c-review__prefix--color-green) .c-review__body').text().trim() || null,
                 guestName: $(el).find('.bui-avatar-block__title').text().trim(),
                 travellerType: $(el).find('.review-panel-wide__traveller_type .bui-list__body').text().trim(),
                 room: $(el).find('.c-review-block__room-info-row .bui-list__body').text().trim() || null,
                 nightsStay: parseInt($(el).find('.c-review-block__stay-date .bui-list__body').text().trim(), 10),
-                date: $(el).find('.c-review-block__date').text().trim()
-                    .replace('Reviewed: ', ''),
+                date: dateMatches.length > 0 ? dateMatches[0] : null,
                 country: $(el).find('.bui-avatar-block__subtitle').text().trim(),
             };
 

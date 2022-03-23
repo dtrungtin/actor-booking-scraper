@@ -4,9 +4,10 @@ const { REDUCER_ACTION_TYPES } = require('./consts');
 module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
     const store = await GlobalStore.init({
         initialState: {
-            details: {},
             remainingPages: maxPages,
             remainingReviewsPages: maxReviewsPages,
+            details: {},
+            reviewPagesToProcess: {},
             useFiltersData: {
                 crawledNames: [],
                 enqueuedUrls: [],
@@ -23,11 +24,12 @@ module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
 const getGlobalStoreReducer = () => {
     const {
         DECREMENT_REMAINING_PAGES,
-        DECREMENT_REMAINING_REVIEWS_PAGES,
         ADD_DETAIL,
         ADD_REVIEWS,
         ADD_CRAWLED_NAME,
         ADD_ENQUEUED_URL,
+        SET_REVIEW_URLS_TO_PROCESS,
+        REMOVE_PROCESSED_REVIEW_URL,
     } = REDUCER_ACTION_TYPES;
 
     const reducer = (state, action) => {
@@ -39,17 +41,12 @@ const getGlobalStoreReducer = () => {
                     ...state,
                     remainingPages: state.remainingPages - 1,
                 };
-            case DECREMENT_REMAINING_REVIEWS_PAGES:
-                return {
-                    ...state,
-                    remainingReviewsPages: state.remainingReviewsPages - 1,
-                };
             case ADD_DETAIL:
                 return {
                     ...state,
                     details: {
                         ...state.details,
-                        ...action.detail,
+                        [action.detailUrl]: action.detail,
                     },
                 };
             case ADD_REVIEWS:
@@ -66,6 +63,27 @@ const getGlobalStoreReducer = () => {
                         },
                     },
                 };
+            case SET_REVIEW_URLS_TO_PROCESS:
+                return {
+                    ...state,
+                    reviewPagesToProcess: {
+                        ...state.reviewPagesToProcess,
+                        [action.detailUrl]: action.reviewUrls,
+                    },
+                };
+            case REMOVE_PROCESSED_REVIEW_URL:
+            {
+                const updatedReviewUrls = state.reviewPagesToProcess[action.detailUrl]
+                    .filter((reviewUrl) => reviewUrl !== action.reviewUrl);
+
+                return {
+                    ...state,
+                    reviewPagesToProcess: {
+                        ...state.reviewPagesToProcess,
+                        [action.detailUrl]: updatedReviewUrls,
+                    },
+                };
+            }
             case ADD_CRAWLED_NAME:
                 return {
                     ...state,

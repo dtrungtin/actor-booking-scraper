@@ -333,20 +333,37 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailUrl) =>
     const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
     const reviewsCount = await extractReviewsCount(page);
 
-    log.info(`Found ${reviewsCount} reviews`, { detailPageUrl });
-    log.info(`Enqueuing reviews pages...`);
+    const reviewPagesUrls = getReviewPagesUrls(reviewsUrl, reviewsCount);
+    log.info(`Found ${reviewsCount} reviews. Enqueuing ${reviewPagesUrls.length} reviews pages...`, { detailPageUrl });
 
-    const requestsToEnqueue = getReviewPagesRequests(reviewsUrl, reviewsCount, detailUrl);
+    const { SET_REVIEW_URLS_TO_PROCESS } = REDUCER_ACTION_TYPES;
 
-    for (let index = 0; index < requestsToEnqueue.length; index++) {
-        const request = requestsToEnqueue[index];
+    const store = GlobalStore.summon();
+    store.setWithReducer({
+        type: SET_REVIEW_URLS_TO_PROCESS,
+        reviewUrls: reviewPagesUrls,
+        detailUrl,
+    });
 
-        const isLastRequest = index === requestsToEnqueue.length - 1;
-        if (isLastRequest) {
-            request.userData.isLastReviewPage = true;
-        }
+    for (let index = 0; index < reviewPagesUrls.length; index++) {
+        const url = reviewPagesUrls[index];
+        const request = {
+            url,
+            userData: {
+                label: LABELS.REVIEW,
+                detailUrl,
+            },
+        };
 
-        await requestQueue.addRequest(request);
+        await requestQueue.addRequest(
+            request,
+
+            /**
+            * Reviews have to be prioritized so that all reviews would be processed ASAP
+            * and the detail could be pushed into the dataset.
+            */
+            { forefront: true },
+        );
     }
 };
 
@@ -415,39 +432,19 @@ const extractReviewsCount = async (page) => {
     return reviewsCount;
 };
 
-const getReviewPagesRequests = (reviewsUrl, reviewsCount, detailUrl) => {
+const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {
     const store = GlobalStore.summon();
 
-    const { DECREMENT_REMAINING_REVIEWS_PAGES } = REDUCER_ACTION_TYPES;
+    const urlsToEnqueue = [];
 
-    const requestsToEnqueue = [];
-    let enqueuedReviews = 0;
+    const reviewsToEnqueue = Math.min(reviewsCount, store.state.remainingReviewsPages);
 
-    while (enqueuedReviews < reviewsCount) {
-        if (store.state.remainingReviewsPages <= 0) {
-            // We tolerate a few review pages over limit with respect to parallelization
-            log.info('Reached maximum reviews pages limit.');
-            break;
-        }
-
+    for (let enqueuedReviews = 0; enqueuedReviews < reviewsToEnqueue; enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST) {
         reviewsUrl.searchParams.set('offset', enqueuedReviews);
-
-        requestsToEnqueue.push({
-            url: reviewsUrl.toString(),
-            userData: {
-                label: LABELS.REVIEW,
-                detailUrl,
-            },
-        });
-
-        enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST;
-
-        store.setWithReducer({
-            type: DECREMENT_REMAINING_REVIEWS_PAGES,
-        });
+        urlsToEnqueue.push(reviewsUrl.toString());
     }
 
-    return requestsToEnqueue;
+    return urlsToEnqueue;
 };
 
 const getFilterNameValues = async (elements, attribute) => {

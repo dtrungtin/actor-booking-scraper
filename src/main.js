@@ -44,7 +44,7 @@ Apify.main(async () => {
     const crawler = new Apify.PuppeteerCrawler({
         requestList,
         requestQueue,
-        handlePageTimeoutSecs: enableAssets ? 60 : 30,
+        handlePageTimeoutSecs: enableAssets ? 120 : 60,
         proxyConfiguration,
         launchContext: {
             useChrome: Apify.isAtHome(),

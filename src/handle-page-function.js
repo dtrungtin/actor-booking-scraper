@@ -28,25 +28,32 @@ module.exports = async (context, globalContext) => {
     const { url, userData } = request;
     const { label } = userData;
 
-    log.info(`open url(${label}): ${url}`);
+    log.info(`Opened url (${label})`, { url });
 
     if (label === LABELS.DETAIL) {
         await handleDetailPage(context, globalContext);
-    } else if (label === LABELS.START || LABELS.PAGE) {
-        await handleListPage({ page, request, session, requestQueue }, globalContext);
     } else if (label === LABELS.REVIEW) {
         await handleReviewPage(context, globalContext);
+    } else if (label === LABELS.START || label === LABELS.PAGE) {
+        await handleListPage({ page, request, session, requestQueue }, globalContext);
     }
 };
 
 const handleDetailPage = async (context, globalContext) => {
-    const { page, crawler: { requestQueue }, request: { userData }, session } = context;
+    const {
+        page,
+        session,
+        crawler: { requestQueue },
+        request: { url: detailUrl, userData },
+    } = context;
     const { input, extendOutputFunction } = globalContext;
+
+    if (typeof detailUrl === 'object') throw new Error('Detail url is object');
 
     const { startUrls, minScore, extractReviewerName = false } = input;
 
     const html = await page.content();
-    await Apify.setValue('PAGE', html, { contentType: 'text/html' });
+    await Apify.setValue('DETAIL_PAGE', html, { contentType: 'text/html' });
 
     await waitForDetailPageToLoad(page);
 
@@ -73,8 +80,8 @@ const handleDetailPage = async (context, globalContext) => {
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
     const store = GlobalStore.summon();
     if (store.state.remainingReviewsPages > 0) {
-        await enqueueAllReviewsPages(page, requestQueue, detail.url);
-        saveDetailIntoStore(detail);
+        await saveDetailIntoStore(detail, detailUrl);
+        await enqueueAllReviewsPages(page, requestQueue, detailUrl);
     } else {
         // Store userReviews extracted directly from detail page only if no reviews are scraped from extra requests.
         await Apify.pushData({ ...detail, userReviews, ...userResult });
@@ -146,10 +153,26 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
 };
 
 const handleReviewPage = async (context, globalContext) => {
-    const { page, request: { userData: { detailUrl, isLastReviewPage } } } = context;
+    const {
+        page,
+        session,
+        request: {
+            url: reviewUrl,
+            userData: { detailUrl },
+        },
+    } = context;
     const { input } = globalContext;
 
-    const { extractReviewerName = false } = input;
+    const { startUrls, extractReviewerName = false } = input;
+
+    const html = await page.content();
+    await Apify.setValue('REVIEW_PAGE', html, { contentType: 'text/html' });
+
+    await waitForReviewPageToLoad(page);
+    await Apify.utils.puppeteer.injectJQuery(page);
+
+    // Check if the page was opened through working proxy.
+    validateProxy(page, session, startUrls, 'label');
 
     let reviews = await extractReviews(page);
     if (!extractReviewerName) {
@@ -159,9 +182,10 @@ const handleReviewPage = async (context, globalContext) => {
             return reviewWithoutGuestName;
         });
     }
+    log.info(JSON.stringify(reviews, null, 2));
 
     const store = GlobalStore.summon();
-    const { ADD_REVIEWS } = REDUCER_ACTION_TYPES;
+    const { ADD_REVIEWS, REMOVE_PROCESSED_REVIEW_URL } = REDUCER_ACTION_TYPES;
 
     store.setWithReducer({
         type: ADD_REVIEWS,
@@ -169,28 +193,33 @@ const handleReviewPage = async (context, globalContext) => {
         reviews,
     });
 
-    if (isLastReviewPage) {
+    store.setWithReducer({
+        type: REMOVE_PROCESSED_REVIEW_URL,
+        reviewUrl,
+        detailUrl,
+    });
+
+    if (store.state.reviewPagesToProcess[detailUrl].length === 0) {
         log.info('Extracted all reviews, pushing result to the dataset...', { detailUrl });
-        store.pushPathToDataset(`details.${detailUrl}`);
+        await store.pushPathToDataset(`details.${detailUrl}`);
     }
 };
 
-const saveDetailIntoStore = (detail) => {
+const saveDetailIntoStore = async (detail, detailUrl) => {
     const { ADD_DETAIL } = REDUCER_ACTION_TYPES;
 
     const store = GlobalStore.summon();
 
-    const storeDetail = {
-        ...detail,
-        reviews: [],
-    };
-
     store.setWithReducer({
         type: ADD_DETAIL,
         detail: {
-            [detail.url]: storeDetail,
+            ...detail,
+            reviews: [],
         },
+        detailUrl,
     });
+
+    await store.forceSave();
 };
 
 const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
@@ -275,6 +304,14 @@ const waitForDetailPageToLoad = async (page) => {
         await page.waitForSelector('.bicon-occupancy');
     } catch (e) {
         log.info('occupancy info not found');
+    }
+};
+
+const waitForReviewPageToLoad = async (page) => {
+    try {
+        await page.waitForSelector('.c-review-block');
+    } catch (e) {
+        log.info('review info not found');
     }
 };
 
