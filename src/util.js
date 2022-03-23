@@ -30,6 +30,7 @@ const getAttribute = async (element, attr, fallback = '') => {
         return fallback;
     }
 };
+
 module.exports.getAttribute = getAttribute;
 
 /**
@@ -327,7 +328,7 @@ module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalCont
     }
 };
 
-module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailUrl) => {
+module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailPagename) => {
     const detailPageUrl = await page.url();
 
     const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
@@ -342,7 +343,7 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailUrl) =>
     store.setWithReducer({
         type: SET_REVIEW_URLS_TO_PROCESS,
         reviewUrls: reviewPagesUrls,
-        detailUrl,
+        detailPagename,
     });
 
     for (let index = 0; index < reviewPagesUrls.length; index++) {
@@ -351,7 +352,7 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailUrl) =>
             url,
             userData: {
                 label: LABELS.REVIEW,
-                detailUrl,
+                detailPagename,
             },
         };
 
@@ -359,8 +360,8 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailUrl) =>
             request,
 
             /**
-            * Reviews have to be prioritized so that all reviews would be processed ASAP
-            * and the detail could be pushed into the dataset.
+            * Reviews have to be prioritized as we're waiting for all
+            * reviews to be processed before we push the detail into the dataset.
             */
             { forefront: true },
         );
@@ -399,9 +400,6 @@ const buildReviewsStartUrl = (detailPageUrl) => {
     const reviewsUrl = new URL('https://www.booking.com/reviewlist.cs.html');
 
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
-    const placeNameMatches = PLACE_URL_NAME_REGEX.exec(detailPageUrl);
-    const placeNameMatch = placeNameMatches ? placeNameMatches[1] : '';
-
     const placeCountryMatches = PLACE_COUNTRY_URL_CODE_REGEX.exec(detailPageUrl);
     const placeCountryMatch = placeCountryMatches ? placeCountryMatches[1] : '';
 
@@ -410,7 +408,7 @@ const buildReviewsStartUrl = (detailPageUrl) => {
         label: searchParams.get('label'),
         sid: searchParams.get('sid'),
         srpvid: searchParams.get('srpvid'),
-        pagename: placeNameMatch,
+        pagename: getPagename(detailPageUrl),
         cc1: placeCountryMatch,
         rows: REVIEWS_RESULTS_PER_REQUEST,
         offset: 0,
@@ -427,7 +425,7 @@ const extractReviewsCount = async (page) => {
     const reviewsCountSelector = '[data-testid="review-score-component"] ._1e6021d2f';
     const reviewsCountEl = await page.$(reviewsCountSelector);
     const reviewsCountText = await getAttribute(reviewsCountEl, 'textContent');
-    const reviewsCount = parseInt(reviewsCountText.replace(/[^\d]+/g, ''), 10);
+    const reviewsCount = parseInt(reviewsCountText.replace(/[^\d]+/g, ''), 10) || 0;
 
     return reviewsCount;
 };
@@ -437,7 +435,7 @@ const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {
 
     const urlsToEnqueue = [];
 
-    const reviewsToEnqueue = Math.min(reviewsCount, store.state.remainingReviewsPages);
+    const reviewsToEnqueue = Math.min(reviewsCount, store.state.maxReviewsPages);
 
     for (let enqueuedReviews = 0; enqueuedReviews < reviewsToEnqueue; enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST) {
         reviewsUrl.searchParams.set('offset', enqueuedReviews);
@@ -571,3 +569,17 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl) => {
         }
     }
 };
+
+/**
+ *
+ * @param {URL} detailPageUrl
+ * @returns
+ */
+const getPagename = (detailPageUrl) => {
+    const placeNameMatches = PLACE_URL_NAME_REGEX.exec(detailPageUrl);
+    const placeNameMatch = placeNameMatches ? placeNameMatches[1] : '';
+
+    return placeNameMatch;
+};
+
+module.exports.getPagename = getPagename;

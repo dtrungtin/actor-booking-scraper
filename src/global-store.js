@@ -5,7 +5,7 @@ module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
     const store = await GlobalStore.init({
         initialState: {
             remainingPages: maxPages,
-            remainingReviewsPages: maxReviewsPages,
+            maxReviewsPages,
             details: {},
             reviewPagesToProcess: {},
             useFiltersData: {
@@ -42,70 +42,94 @@ const getGlobalStoreReducer = () => {
                     remainingPages: state.remainingPages - 1,
                 };
             case ADD_DETAIL:
+            {
+                const { detailPagename, detail } = action;
                 return {
                     ...state,
                     details: {
                         ...state.details,
-                        [action.detailUrl]: action.detail,
+
+                        /**
+                         * We have to use detailPagename as key instead of raw url
+                         * to ensure that store.pushPathToDataset is working correctly
+                         * (urls include '.html' substring which is interpreted as
+                         * another nested field)
+                         */
+                        [detailPagename]: detail,
                     },
                 };
+            }
             case ADD_REVIEWS:
+            {
+                const { detailPagename, reviews } = action;
                 return {
                     ...state,
                     details: {
                         ...state.details,
-                        [state.details[action.detailUrl]]: {
-                            ...state.details[action.detailUrl],
+                        [detailPagename]: {
+                            ...state.details[detailPagename],
                             reviews: [
-                                ...state.details[action.detailUrl].reviews,
-                                ...action.reviews,
+                                ...state.details[detailPagename].reviews,
+                                ...reviews,
                             ],
                         },
                     },
                 };
+            }
             case SET_REVIEW_URLS_TO_PROCESS:
+            {
+                const { detailPagename, reviewUrls } = action;
                 return {
                     ...state,
                     reviewPagesToProcess: {
                         ...state.reviewPagesToProcess,
-                        [action.detailUrl]: action.reviewUrls,
+                        [detailPagename]: reviewUrls,
                     },
                 };
+            }
             case REMOVE_PROCESSED_REVIEW_URL:
             {
-                const updatedReviewUrls = state.reviewPagesToProcess[action.detailUrl]
-                    .filter((reviewUrl) => reviewUrl !== action.reviewUrl);
+                const { detailPagename, reviewUrl } = action;
+
+                const updatedReviewUrls = state.reviewPagesToProcess[detailPagename]
+                    .filter((url) => url !== reviewUrl);
 
                 return {
                     ...state,
                     reviewPagesToProcess: {
                         ...state.reviewPagesToProcess,
-                        [action.detailUrl]: updatedReviewUrls,
+                        [detailPagename]: updatedReviewUrls,
                     },
                 };
             }
             case ADD_CRAWLED_NAME:
+            {
+                const { crawledName } = action;
                 return {
                     ...state,
                     useFiltersData: {
                         ...state.useFiltersData,
                         crawledNames: [
                             ...state.useFiltersData.crawledNames,
-                            action.crawledName,
+                            crawledName,
                         ],
                     },
                 };
+            }
             case ADD_ENQUEUED_URL:
+            {
+                const { enqueuedUrl } = action;
                 return {
                     ...state,
                     useFiltersData: {
                         ...state.useFiltersData,
                         enqueuedUrls: [
                             ...state.useFiltersData.enqueuedUrls,
-                            action.enqueuedUrl,
+                            enqueuedUrl,
                         ],
                     },
                 };
+            }
         }
     };
 
