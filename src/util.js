@@ -435,7 +435,7 @@ const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {
 
     const urlsToEnqueue = [];
 
-    const reviewsToEnqueue = Math.min(reviewsCount, store.state.maxReviewsPages);
+    const reviewsToEnqueue = REVIEWS_RESULTS_PER_REQUEST * Math.min(reviewsCount, store.state.maxReviewsPages);
 
     for (let enqueuedReviews = 0; enqueuedReviews < reviewsToEnqueue; enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST) {
         reviewsUrl.searchParams.set('offset', enqueuedReviews);
