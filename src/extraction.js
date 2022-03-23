@@ -446,20 +446,39 @@ module.exports.extractUserReviews = (html, extractReviewerName) => {
 };
 
 module.exports.extractReviews = async (page) => {
-    const extractedReviews = page.evaluate(() => {
+    const extractedReviews = await page.evaluate(() => {
         const $ = window.jQuery;
+        const extractReviewTexts = (el) => {
+            const reviewTextElements = $(el).find('.c-review__inner--ltr');
+
+            const reviewTexts = { positive: null, negative: null };
+
+            $.map(reviewTextElements, (element) => {
+                const positive = $(element).find('.-iconset-review_great').length > 0;
+                const negative = $(element).find('.-iconset-review_poor').length > 0;
+
+                const reviewText = $(element).find('.c-review__body').text().trim() || null;
+                if (reviewText) {
+                    const reviewKey = positive || !negative ? 'positive' : 'negative';
+                    reviewTexts[reviewKey] = reviewText;
+                }
+            });
+
+            return reviewTexts;
+        };
 
         const reviewBlocks = $('.c-review-block');
         const reviews = $.map(reviewBlocks, (el) => {
             const dateMatches = $(el).find('.c-review-block__date').text().trim()
                 .match(/([\d]{1,2}(.)+[\d]{4})/gi);
 
+            const reviewTexts = extractReviewTexts(el);
+
             const review = {
                 title: $(el).find('.c-review-block__title').first().text()
                     .trim() || null,
                 score: parseFloat($(el).find('.bui-review-score__badge').text().trim()) || null,
-                positive: $(el).find('.c-review__inner--ltr .c-review__prefix--color-green .c-review__body').text().trim() || null,
-                negative: $(el).find('.c-review__inner--ltr :not(.c-review__prefix--color-green) .c-review__body').text().trim() || null,
+                ...reviewTexts,
                 guestName: $(el).find('.bui-avatar-block__title').text().trim(),
                 travellerType: $(el).find('.review-panel-wide__traveller_type .bui-list__body').text().trim(),
                 room: $(el).find('.c-review-block__room-info-row .bui-list__body').text().trim() || null,
