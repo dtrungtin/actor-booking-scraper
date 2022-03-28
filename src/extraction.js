@@ -419,7 +419,7 @@ const extractCategoryReviews = async (page) => {
  * @param {string} html
  * @param {boolean} extractReviewerName
  */
-module.exports.extractUserReviews = (html, extractReviewerName) => {
+module.exports.extractPreviewReviews = (html, extractReviewerName) => {
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
     const exportedVarsMatch = matches ? matches[1] : '';
@@ -448,10 +448,14 @@ module.exports.extractUserReviews = (html, extractReviewerName) => {
 module.exports.extractReviews = async (page) => {
     const extractedReviews = await page.evaluate(() => {
         const $ = window.jQuery;
-        const extractReviewTexts = (el) => {
-            const reviewTextElements = $(el).find('.c-review__inner--ltr');
 
-            const reviewTexts = { positive: null, negative: null };
+        const extractReviewTexts = (reviewElement) => {
+            const reviewTextElements = $(reviewElement).find('.c-review__inner--ltr');
+
+            const reviewTexts = {
+                positive: null,
+                negative: null,
+            };
 
             $(reviewTextElements).each((_index, element) => {
                 const positive = $(element).find('.-iconset-review_great').length > 0;
@@ -468,6 +472,21 @@ module.exports.extractReviews = async (page) => {
             });
 
             return reviewTexts;
+        };
+
+        const extractReviewPhotos = (reviewElement) => {
+            const LARGE_PHOTO_ATTRIBUTE = 'data-photos-large-src';
+            const photoElements = $(reviewElement).find(`li.c-review-block__photos__item [${LARGE_PHOTO_ATTRIBUTE}]`);
+            const photos = $.map(photoElements, (photoElement) => $(photoElement).attr(LARGE_PHOTO_ATTRIBUTE));
+            return photos;
+        };
+
+        const extractCountryCode = (reviewElement) => {
+            const COUNTRY_CODE_REGEX = /static\/img\/flags\/16\/([a-z]+)\//gi;
+            const flagImage = $(reviewElement).find('.bui-avatar-block__flag img').attr('src');
+            const countryCodeMatches = COUNTRY_CODE_REGEX.exec(flagImage) || [];
+            const countryCode = countryCodeMatches.length > 1 ? countryCodeMatches[1] : null;
+            return countryCode;
         };
 
         const reviewBlocks = $('.c-review-block');
@@ -488,6 +507,8 @@ module.exports.extractReviews = async (page) => {
                 nightsStay: parseInt($(el).find('.c-review-block__stay-date .bui-list__body').text().trim(), 10),
                 date: dateMatches.length > 0 ? dateMatches[0] : null,
                 country: $(el).find('.bui-avatar-block__subtitle').text().trim(),
+                countryCode: extractCountryCode(el),
+                photos: extractReviewPhotos(el),
             };
 
             return review;

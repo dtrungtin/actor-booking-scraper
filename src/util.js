@@ -337,7 +337,8 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailPagenam
     const reviewsCount = await extractReviewsCount(page);
 
     const reviewPagesUrls = getReviewPagesUrls(reviewsUrl, reviewsCount);
-    log.info(`Found ${reviewsCount} reviews. Enqueuing ${reviewPagesUrls.length} reviews pages...`, { detailPageUrl });
+    log.info(`Found ${reviewsCount} reviews.
+    Enqueuing ${reviewPagesUrls.length} reviews pages (${REVIEWS_RESULTS_PER_REQUEST} reviews per page)...`, { detailPageUrl });
 
     setReviewUrlsToProcess(detailPagename, reviewPagesUrls);
 
@@ -426,7 +427,7 @@ const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {
     const urlsToEnqueue = [];
 
     const maxReviewsPages = getMaxReviewsPages();
-    const reviewsToEnqueue = REVIEWS_RESULTS_PER_REQUEST * Math.min(reviewsCount, maxReviewsPages);
+    const reviewsToEnqueue = Math.min(reviewsCount, maxReviewsPages * REVIEWS_RESULTS_PER_REQUEST);
 
     for (let enqueuedReviews = 0; enqueuedReviews < reviewsToEnqueue; enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST) {
         reviewsUrl.searchParams.set('offset', enqueuedReviews);

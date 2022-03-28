@@ -5,7 +5,7 @@ const { GlobalStore } = require('apify-global-store');
 const {
     extractDetail,
     listPageFunction,
-    extractUserReviews,
+    extractPreviewReviews,
     extractReviews,
 } = require('./extraction');
 
@@ -83,7 +83,6 @@ const handleDetailPage = async (context, globalContext) => {
     const detail = await extractDetail(page, ld, input, userData);
     log.info('detail extracted');
 
-    const userReviews = extractUserReviews(html, extractReviewerName);
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
     const detailPagename = getPagename(new URL(url));
@@ -94,7 +93,8 @@ const handleDetailPage = async (context, globalContext) => {
         await enqueueAllReviewsPages(page, requestQueue, detailPagename);
     } else {
         // Store userReviews extracted directly from detail page only if no reviews are scraped from extra requests.
-        await Apify.pushData({ ...detail, userReviews, ...userResult });
+        const reviews = extractPreviewReviews(html, extractReviewerName);
+        await Apify.pushData({ ...detail, reviews, ...userResult });
     }
 };
 
