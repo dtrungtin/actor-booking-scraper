@@ -453,14 +453,17 @@ module.exports.extractReviews = async (page) => {
 
             const reviewTexts = { positive: null, negative: null };
 
-            $.map(reviewTextElements, (element) => {
+            $(reviewTextElements).each((_index, element) => {
                 const positive = $(element).find('.-iconset-review_great').length > 0;
                 const negative = $(element).find('.-iconset-review_poor').length > 0;
 
                 const reviewText = $(element).find('.c-review__body').text().trim() || null;
                 if (reviewText) {
-                    const reviewKey = positive || !negative ? 'positive' : 'negative';
-                    reviewTexts[reviewKey] = reviewText;
+                    if (positive) {
+                        reviewTexts.positive = reviewText;
+                    } else if (negative) {
+                        reviewTexts.negative = reviewText;
+                    }
                 }
             });
 
