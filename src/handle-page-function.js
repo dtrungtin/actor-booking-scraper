@@ -20,7 +20,17 @@ const {
     getPagename,
 } = require('./util');
 
-const { MAX_PAGES, RESULTS_PER_PAGE, LABELS, REDUCER_ACTION_TYPES } = require('./consts');
+const { MAX_PAGES, RESULTS_PER_PAGE, LABELS } = require('./consts');
+
+const {
+    addReviews,
+    removeProcessedReviewUrl,
+    addDetail,
+    addCrawledName,
+    getMaxReviewsPages,
+    getRemainingPages,
+    getCrawledNames,
+} = require('./global-store');
 
 const { log } = Apify.utils;
 
@@ -79,9 +89,8 @@ const handleDetailPage = async (context, globalContext) => {
     const detailPagename = getPagename(new URL(url));
 
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
-    const store = GlobalStore.summon();
-    if (store.state.maxReviewsPages > 0) {
-        await saveDetailIntoStore(detail, detailPagename);
+    if (getMaxReviewsPages() > 0) {
+        addDetail(detailPagename, detail);
         await enqueueAllReviewsPages(page, requestQueue, detailPagename);
     } else {
         // Store userReviews extracted directly from detail page only if no reviews are scraped from extra requests.
@@ -123,11 +132,8 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
     const { input } = globalContext;
     const { useFilters } = input;
 
-    const store = GlobalStore.summon();
-    const { state: { remainingPages } } = store;
-
     const totalResults = await getTotalListingsCount(page);
-    const usingFilters = shouldUseFilters(totalResults, useFilters, remainingPages);
+    const usingFilters = shouldUseFilters(totalResults, useFilters);
 
     /**
      * If filtering is enabled, enqueue filtered pages. Filter pages enqueuing is placed
@@ -147,7 +153,7 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
      * results and then we enqueue pagination links instead of more filtered pages.
      */
     if (!usingFilters) {
-        if (remainingPages > 0) {
+        if (getRemainingPages() > 0) {
             await enqueueAllPaginationPages(page, requestQueue, globalContext);
         }
     }
@@ -184,44 +190,15 @@ const handleReviewPage = async (context, globalContext) => {
         });
     }
 
+    addReviews(detailPagename, reviews);
+    removeProcessedReviewUrl(detailPagename, reviewUrl);
+
     const store = GlobalStore.summon();
-    const { ADD_REVIEWS, REMOVE_PROCESSED_REVIEW_URL } = REDUCER_ACTION_TYPES;
-
-    store.setWithReducer({
-        type: ADD_REVIEWS,
-        detailPagename,
-        reviews,
-    });
-
-    store.setWithReducer({
-        type: REMOVE_PROCESSED_REVIEW_URL,
-        detailPagename,
-        reviewUrl,
-    });
-
-    await store.forceSave();
 
     if (store.state.reviewPagesToProcess[detailPagename].length === 0) {
         log.info('Extracted all reviews, pushing result to the dataset...', { detailPagename });
         await store.pushPathToDataset(`details.${detailPagename}`);
     }
-};
-
-const saveDetailIntoStore = async (detail, detailPagename) => {
-    const { ADD_DETAIL } = REDUCER_ACTION_TYPES;
-
-    const store = GlobalStore.summon();
-
-    store.setWithReducer({
-        type: ADD_DETAIL,
-        detail: {
-            ...detail,
-            reviews: [],
-        },
-        detailPagename,
-    });
-
-    await store.forceSave();
 };
 
 const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
@@ -333,8 +310,10 @@ const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     }
 };
 
-const shouldUseFilters = (totalResults, useFilters, remainingPages) => {
+const shouldUseFilters = (totalResults, useFilters) => {
     const maxResults = MAX_PAGES * RESULTS_PER_PAGE;
+    const remainingPages = getRemainingPages();
+
     const requiresPagesOverLimit = remainingPages > MAX_PAGES;
 
     return useFilters && totalResults > maxResults && requiresPagesOverLimit;
@@ -362,20 +341,14 @@ const extractListPageResults = async (page, request, input) => {
 
     const toBeAdded = [];
 
-    const store = GlobalStore.summon();
-    const { state: { useFiltersData } } = store;
-    const { ADD_CRAWLED_NAME } = REDUCER_ACTION_TYPES;
-
     if (result.length > 0) {
         for (const item of result) {
             item.url = addUrlParameters(item.url, input);
-            if (!useFiltersData.crawledNames.includes(item.name)) {
-                toBeAdded.push(item);
+            const crawledNames = getCrawledNames();
 
-                store.setWithReducer({
-                    type: ADD_CRAWLED_NAME,
-                    crawledName: item.name,
-                });
+            if (!crawledNames.includes(item.name)) {
+                toBeAdded.push(item);
+                addCrawledName(item.name);
             }
         }
 

@@ -1,6 +1,6 @@
 const Apify = require('apify');
-const { GlobalStore } = require('apify-global-store');
-const { RESULTS_PER_PAGE, MAX_PAGES, LABELS, REDUCER_ACTION_TYPES } = require('./consts');
+const { RESULTS_PER_PAGE, MAX_PAGES, LABELS } = require('./consts');
+const { decrementRemainingPages, getRemainingPages } = require('./global-store');
 
 const { addUrlParameters } = require('./util');
 
@@ -96,27 +96,21 @@ const buildRequestsFromStartUrls = async (startUrls, input) => {
 const buildRequestsFromInput = (startUrl, globalContext) => {
     const { input } = globalContext;
     const { useFilters, minMaxPrice, propertyType } = input;
-    const { DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
 
     const requests = [];
 
-    const store = GlobalStore.summon();
-
-    if (store.state.remainingPages > 0) {
+    if (getRemainingPages() > 0) {
         const request = {
             url: startUrl,
             userData: { label: LABELS.START },
         };
 
         requests.push(request);
-
-        store.setWithReducer({
-            type: DECREMENT_REMAINING_PAGES,
-        });
+        decrementRemainingPages();
 
         if (!useFilters && minMaxPrice === 'none' && propertyType === 'none') {
             for (let i = 1; i < MAX_PAGES; i++) {
-                if (store.state.remainingPages < 1) {
+                if (getRemainingPages() < 1) {
                     break;
                 }
 
@@ -125,9 +119,7 @@ const buildRequestsFromInput = (startUrl, globalContext) => {
                     userData: { label: LABELS.PAGE },
                 });
 
-                store.setWithReducer({
-                    type: DECREMENT_REMAINING_PAGES,
-                });
+                decrementRemainingPages();
             }
         }
     }

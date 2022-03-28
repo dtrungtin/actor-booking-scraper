@@ -2,7 +2,6 @@ const Apify = require('apify');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const moment = require('moment');
 
-const { GlobalStore } = require('apify-global-store');
 const {
     DATE_FORMAT,
     PROPERTY_TYPE_IDS,
@@ -11,8 +10,16 @@ const {
     REVIEWS_RESULTS_PER_REQUEST,
     PLACE_COUNTRY_URL_CODE_REGEX,
     LABELS,
-    REDUCER_ACTION_TYPES,
 } = require('./consts');
+
+const {
+    addEnqueuedUrl,
+    decrementRemainingPages,
+    setReviewUrlsToProcess,
+    getRemainingPages,
+    getEnqueuedUrls,
+    getMaxReviewsPages,
+} = require('./global-store');
 
 const { log } = Apify.utils;
 
@@ -284,9 +291,6 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
  */
 module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalContext) => {
     const { input } = globalContext;
-    const { DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
-
-    const store = GlobalStore.summon();
 
     const baseUrl = page.url();
     if (baseUrl.indexOf('offset') < 0) {
@@ -308,13 +312,11 @@ module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalCont
                         ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
                         : `${pageUrl}&offset=${newOffset}`;
 
-                    if (store.state.remainingPages < 1) {
+                    if (getRemainingPages() < 1) {
                         break;
                     }
 
-                    store.setWithReducer({
-                        type: DECREMENT_REMAINING_PAGES,
-                    });
+                    decrementRemainingPages();
 
                     await requestQueue.addRequest({
                         url: addUrlParameters(newUrl, input),
@@ -337,14 +339,7 @@ module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailPagenam
     const reviewPagesUrls = getReviewPagesUrls(reviewsUrl, reviewsCount);
     log.info(`Found ${reviewsCount} reviews. Enqueuing ${reviewPagesUrls.length} reviews pages...`, { detailPageUrl });
 
-    const { SET_REVIEW_URLS_TO_PROCESS } = REDUCER_ACTION_TYPES;
-
-    const store = GlobalStore.summon();
-    store.setWithReducer({
-        type: SET_REVIEW_URLS_TO_PROCESS,
-        reviewUrls: reviewPagesUrls,
-        detailPagename,
-    });
+    setReviewUrlsToProcess(detailPagename, reviewPagesUrls);
 
     for (let index = 0; index < reviewPagesUrls.length; index++) {
         const url = reviewPagesUrls[index];
@@ -372,16 +367,13 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
     const { page, unchecked, attribute } = extractionInfo;
     const { label, baseUrl } = urlInfo;
 
-    const store = GlobalStore.summon();
-    const { state: { useFiltersData: { enqueuedUrls } } } = store;
-
     const url = new URL(baseUrl);
 
     const uncheckedElements = await page.$$(unchecked);
     const uncheckedFilters = await getFilterNameValues(uncheckedElements, attribute);
 
     const validFilters = getValidFilters(uncheckedFilters);
-    const filtersToEnqueue = getFiltersToEnqueue(validFilters, enqueuedUrls, url);
+    const filtersToEnqueue = getFiltersToEnqueue(validFilters, url);
     const newFiltersCount = filtersToEnqueue.length;
 
     if (newFiltersCount) {
@@ -431,11 +423,10 @@ const extractReviewsCount = async (page) => {
 };
 
 const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {
-    const store = GlobalStore.summon();
-
     const urlsToEnqueue = [];
 
-    const reviewsToEnqueue = REVIEWS_RESULTS_PER_REQUEST * Math.min(reviewsCount, store.state.maxReviewsPages);
+    const maxReviewsPages = getMaxReviewsPages();
+    const reviewsToEnqueue = REVIEWS_RESULTS_PER_REQUEST * Math.min(reviewsCount, maxReviewsPages);
 
     for (let enqueuedReviews = 0; enqueuedReviews < reviewsToEnqueue; enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST) {
         reviewsUrl.searchParams.set('offset', enqueuedReviews);
@@ -480,7 +471,7 @@ const getValidFilters = (uncheckedFilters) => {
     return validFilters;
 };
 
-const getFiltersToEnqueue = (filters, enqueuedUrls, url) => {
+const getFiltersToEnqueue = (filters, url) => {
     const filtersToEnqueue = [];
 
     Object.keys(filters).forEach((name) => {
@@ -489,7 +480,7 @@ const getFiltersToEnqueue = (filters, enqueuedUrls, url) => {
             return value && !url.search.includes(`${name}=${value}`);
         });
 
-        const isFilterEnqueued = isFilterAlreadyEnqueued(name, url, enqueuedUrls);
+        const isFilterEnqueued = isFilterAlreadyEnqueued(name, url);
 
         if (!isFilterEnqueued) {
             filtersToEnqueue.push({ name, values });
@@ -499,9 +490,11 @@ const getFiltersToEnqueue = (filters, enqueuedUrls, url) => {
     return filtersToEnqueue;
 };
 
-const isFilterAlreadyEnqueued = (name, url, enqueuedUrls) => {
+const isFilterAlreadyEnqueued = (name, url) => {
     const updatedUrl = new URL(url);
     updatedUrl.searchParams.set(name, 'example');
+
+    const enqueuedUrls = getEnqueuedUrls();
 
     for (const enqueuedUrl of enqueuedUrls) {
         if (haveSameQueryParamNames(updatedUrl, enqueuedUrl)) {
@@ -538,11 +531,6 @@ const haveSameQueryParamNames = (firstUrl, secondUrl) => {
 };
 
 const enqueueFilters = async (filters, requestQueue, label, baseUrl) => {
-    const store = GlobalStore.summon();
-    const { state: { remainingPages, useFiltersData: { enqueuedUrls } } } = store;
-
-    const { ADD_ENQUEUED_URL, DECREMENT_REMAINING_PAGES } = REDUCER_ACTION_TYPES;
-
     for (const filter of filters) {
         const { name, values } = filter;
 
@@ -552,14 +540,12 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl) => {
             url.searchParams.set(name, value);
 
             // Check that url with the exact same filters and values doesn't exist already.
+            const enqueuedUrls = getEnqueuedUrls();
+            const remainingPages = getRemainingPages();
+
             if (!enqueuedUrls.includes(url) && remainingPages > 0) {
-                store.setWithReducer({
-                    type: ADD_ENQUEUED_URL,
-                    enqueuedUrl: url,
-                });
-                store.setWithReducer({
-                    type: DECREMENT_REMAINING_PAGES,
-                });
+                addEnqueuedUrl(url);
+                decrementRemainingPages();
 
                 await requestQueue.addRequest({
                     url: url.toString(),

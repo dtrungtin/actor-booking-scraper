@@ -4,7 +4,7 @@
 	"description": "This is a boilerplate of an Apify actor.",
 	"dependencies": {
 		"apify": "^2.2.1",
-		"apify-global-store": "^1.0.6",
+		"apify-global-store": "^1.1.1",
 		"moment": "^2.29.1",
 		"puppeteer": "^10.4.0",
 		"underscore": "^1.13.2"

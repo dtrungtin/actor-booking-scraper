@@ -1,5 +1,4 @@
 const { GlobalStore } = require('apify-global-store');
-const { REDUCER_ACTION_TYPES } = require('./consts');
 
 module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
     const store = await GlobalStore.init({
@@ -15,123 +14,125 @@ module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
         },
     });
 
-    const reducer = getGlobalStoreReducer();
-    store.addReducer(reducer);
-
     return store;
 };
 
-const getGlobalStoreReducer = () => {
-    const {
-        DECREMENT_REMAINING_PAGES,
-        ADD_DETAIL,
-        ADD_REVIEWS,
-        ADD_CRAWLED_NAME,
-        ADD_ENQUEUED_URL,
-        SET_REVIEW_URLS_TO_PROCESS,
-        REMOVE_PROCESSED_REVIEW_URL,
-    } = REDUCER_ACTION_TYPES;
+module.exports.decrementRemainingPages = () => {
+    const store = GlobalStore.summon();
+    const remainingPages = store.state.remainingPages - 1;
 
-    const reducer = (state, action) => {
-        switch (action.type) {
-            default:
-                return state;
-            case DECREMENT_REMAINING_PAGES:
-                return {
-                    ...state,
-                    remainingPages: state.remainingPages - 1,
-                };
-            case ADD_DETAIL:
-            {
-                const { detailPagename, detail } = action;
-                return {
-                    ...state,
-                    details: {
-                        ...state.details,
+    store.setPath('remainingPages', remainingPages);
+};
 
-                        /**
-                         * We have to use detailPagename as key instead of raw url
-                         * to ensure that store.pushPathToDataset is working correctly
-                         * (urls include '.html' substring which is interpreted as
-                         * another nested field)
-                         */
-                        [detailPagename]: detail,
-                    },
-                };
-            }
-            case ADD_REVIEWS:
-            {
-                const { detailPagename, reviews } = action;
-                return {
-                    ...state,
-                    details: {
-                        ...state.details,
-                        [detailPagename]: {
-                            ...state.details[detailPagename],
-                            reviews: [
-                                ...state.details[detailPagename].reviews,
-                                ...reviews,
-                            ],
-                        },
-                    },
-                };
-            }
-            case SET_REVIEW_URLS_TO_PROCESS:
-            {
-                const { detailPagename, reviewUrls } = action;
-                return {
-                    ...state,
-                    reviewPagesToProcess: {
-                        ...state.reviewPagesToProcess,
-                        [detailPagename]: reviewUrls,
-                    },
-                };
-            }
-            case REMOVE_PROCESSED_REVIEW_URL:
-            {
-                const { detailPagename, reviewUrl } = action;
+module.exports.addDetail = (detailPagename, detail) => {
+    const store = GlobalStore.summon();
+    const { details } = store.state;
 
-                const updatedReviewUrls = state.reviewPagesToProcess[detailPagename]
-                    .filter((url) => url !== reviewUrl);
-
-                return {
-                    ...state,
-                    reviewPagesToProcess: {
-                        ...state.reviewPagesToProcess,
-                        [detailPagename]: updatedReviewUrls,
-                    },
-                };
-            }
-            case ADD_CRAWLED_NAME:
-            {
-                const { crawledName } = action;
-                return {
-                    ...state,
-                    useFiltersData: {
-                        ...state.useFiltersData,
-                        crawledNames: [
-                            ...state.useFiltersData.crawledNames,
-                            crawledName,
-                        ],
-                    },
-                };
-            }
-            case ADD_ENQUEUED_URL:
-            {
-                const { enqueuedUrl } = action;
-                return {
-                    ...state,
-                    useFiltersData: {
-                        ...state.useFiltersData,
-                        enqueuedUrls: [
-                            ...state.useFiltersData.enqueuedUrls,
-                            enqueuedUrl,
-                        ],
-                    },
-                };
-            }
-        }
+    /**
+     * We have to use detailPagename as key instead of raw url
+     * to ensure that store.pushPathToDataset is working correctly
+     * (urls include '.html' substring which is interpreted as
+     * another nested field named 'html')
+     */
+    const updatedDetails = {
+        ...details,
+        [detailPagename]: detail,
     };
 
-    return reducer;
+    store.setPath('details', updatedDetails);
+};
+
+module.exports.addReviews = (detailPagename, reviews) => {
+    const store = GlobalStore.summon();
+    const { details } = store.state;
+
+    const detail = details[detailPagename];
+    const detailReviews = detail.reviews || [];
+
+    const updatedReviews = [
+        ...detailReviews,
+        ...reviews,
+    ];
+
+    store.setPath(`details.${detailPagename}.reviews`, updatedReviews);
+};
+
+module.exports.setReviewUrlsToProcess = (detailPagename, reviewUrls) => {
+    const store = GlobalStore.summon();
+
+    store.setPath(`reviewPagesToProcess.${detailPagename}`, reviewUrls);
+};
+
+module.exports.removeProcessedReviewUrl = (detailPagename, reviewUrl) => {
+    const store = GlobalStore.summon();
+    const { state: { reviewPagesToProcess } } = store;
+
+    const updatedReviewUrls = reviewPagesToProcess[detailPagename]
+        .filter((url) => url !== reviewUrl);
+
+    store.setPath(`reviewPagesToProcess.${detailPagename}`, updatedReviewUrls);
+};
+
+module.exports.addCrawledName = (crawledName) => {
+    const store = GlobalStore.summon();
+    const { state: { useFiltersData: { crawledNames } } } = store;
+
+    const updatedCrawledNames = [
+        ...crawledNames,
+        crawledName,
+    ];
+
+    store.setPath('useFiltersData.crawledNames', updatedCrawledNames);
+};
+
+module.exports.addEnqueuedUrl = (enqueuedUrl) => {
+    const store = GlobalStore.summon();
+    const { state: { useFiltersData: { enqueuedUrls } } } = store;
+
+    const updatedEnqueuedUrls = [
+        ...enqueuedUrls,
+        enqueuedUrl,
+    ];
+
+    store.setPath('useFiltersData.enqueuedUrls', updatedEnqueuedUrls);
+};
+
+/**
+ *
+ * @returns {number}
+ */
+module.exports.getRemainingPages = () => {
+    const store = GlobalStore.summon();
+
+    return store.state.remainingPages;
+};
+
+/**
+ *
+ * @returns {number}
+ */
+module.exports.getMaxReviewsPages = () => {
+    const store = GlobalStore.summon();
+
+    return store.state.maxReviewsPages;
+};
+
+/**
+ *
+ * @returns {string[]}
+ */
+module.exports.getEnqueuedUrls = () => {
+    const store = GlobalStore.summon();
+
+    return store.state.useFiltersData.enqueuedUrls;
+};
+
+/**
+ *
+ * @returns {string[]}
+ */
+module.exports.getCrawledNames = () => {
+    const store = GlobalStore.summon();
+
+    return store.state.useFiltersData.crawledNames;
 };
