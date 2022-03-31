@@ -10,6 +10,7 @@ const {
     REVIEWS_RESULTS_PER_REQUEST,
     PLACE_COUNTRY_URL_CODE_REGEX,
     LABELS,
+    LOCALIZATION_REGEX,
 } = require('./consts');
 
 const {
@@ -330,8 +331,11 @@ module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalCont
     }
 };
 
-module.exports.enqueueAllReviewsPages = async (requestQueue, detailPageUrl, detailPagename, reviewsCount) => {
-    const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
+module.exports.enqueueAllReviewsPages = async (context, detailPagename, reviewsCount, language) => {
+    const { page, crawler: { requestQueue } } = context;
+
+    const detailPageUrl = await page.url();
+    const reviewsUrl = buildReviewsStartUrl(detailPageUrl, language);
 
     const reviewPagesUrls = getReviewPagesUrls(reviewsUrl, reviewsCount);
     log.info(`Found ${reviewsCount} reviews.
@@ -383,11 +387,12 @@ module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue
 
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
 
-const buildReviewsStartUrl = (detailPageUrl) => {
+const buildReviewsStartUrl = (detailPageUrl, language) => {
     const url = new URL(detailPageUrl);
     const { searchParams } = url;
 
-    const reviewsUrl = new URL('https://www.booking.com/reviewlist.cs.html');
+    const reviewsBaseUrl = 'https://www.booking.com/reviewlist.html';
+    const reviewsUrl = new URL(getLocalizedUrl(reviewsBaseUrl, language));
 
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const placeCountryMatches = PLACE_COUNTRY_URL_CODE_REGEX.exec(detailPageUrl);
@@ -547,7 +552,7 @@ const enqueueFilters = async (filters, requestQueue, label, baseUrl) => {
 
 /**
  *
- * @param {URL} detailPageUrl
+ * @param {string} detailPageUrl
  * @returns
  */
 const getPagename = (detailPageUrl) => {
@@ -558,3 +563,13 @@ const getPagename = (detailPageUrl) => {
 };
 
 module.exports.getPagename = getPagename;
+
+const getLocalizedUrl = (url, language) => {
+    const localizedUrl = language
+        ? url.replace(LOCALIZATION_REGEX, `.${language}.html`)
+        : url;
+
+    return localizedUrl;
+};
+
+module.exports.getLocalizedUrl = getLocalizedUrl;

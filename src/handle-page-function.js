@@ -18,6 +18,7 @@ const {
     enqueueAllPaginationPages,
     enqueueAllReviewsPages,
     getPagename,
+    getLocalizedUrl,
 } = require('./util');
 
 const { MAX_PAGES, RESULTS_PER_PAGE, LABELS } = require('./consts');
@@ -54,12 +55,11 @@ const handleDetailPage = async (context, globalContext) => {
     const {
         page,
         session,
-        crawler: { requestQueue },
         request: { url, userData },
     } = context;
     const { input, extendOutputFunction } = globalContext;
 
-    const { startUrls, minScore, extractReviewerName = false } = input;
+    const { startUrls, minScore, language, extractReviewerName = false } = input;
 
     const html = await page.content();
     await Apify.setValue('DETAIL_PAGE', html, { contentType: 'text/html' });
@@ -85,14 +85,13 @@ const handleDetailPage = async (context, globalContext) => {
 
     const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
 
-    const detailPagename = getPagename(new URL(url));
-
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
     if (getMaxReviewsPages() > 0) {
+        const detailPagename = getPagename(url);
         addDetail(detailPagename, detail);
 
-        const detailPageUrl = await page.url();
-        await enqueueAllReviewsPages(requestQueue, detailPageUrl, detailPagename, detail.reviewsCount);
+        const { reviewsCount } = detail;
+        await enqueueAllReviewsPages(context, detailPagename, reviewsCount, language);
 
         await saveDetailIfComplete(detailPagename);
     } else {
@@ -243,6 +242,8 @@ const enqueueFilteredPages = async ({ page, request, requestQueue }) => {
 const enqueueDetailPages = async (page, input, requestQueue) => {
     log.info('enqueuing detail pages...');
 
+    const { language } = input;
+
     const urlMod = fixUrl('&', input);
     const keyMod = async (link) => (await getAttribute(link, 'textContent')).trim().replace(/\n/g, '');
 
@@ -263,13 +264,15 @@ const enqueueDetailPages = async (page, input, requestQueue) => {
             const uniqueKeyCal = keyMod ? await keyMod(link) : href;
             const urlModCal = urlMod ? urlMod(href) : href;
 
+            const localizedUrlModCal = getLocalizedUrl(urlModCal, language);
+
             await requestQueue.addRequest(
                 {
                     userData: {
                         label: LABELS.DETAIL,
                         order: iLink + firstItem,
                     },
-                    url: urlModCal,
+                    url: localizedUrlModCal,
                     uniqueKey: uniqueKeyCal,
                 },
                 { forefront: true },

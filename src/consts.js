@@ -23,8 +23,9 @@ module.exports = {
     },
 
     EXPORTED_VARS_REGEX: /(?:var )(exportedVars = JSON.parse\('.*'( )?\|\|( )?'{}'\);)/is,
-    PLACE_URL_NAME_REGEX: /http(?:s)?:\/\/www\.booking.com\/.+\/([-a-z0-9]+)(?:\.[a-z]+)?\.html/i,
-    PLACE_COUNTRY_URL_CODE_REGEX: /http(?:s)?:\/\/www\.booking.com\/.+\/(.+)\//,
+    PLACE_URL_NAME_REGEX: /http(?:s)?:\/\/www\.booking.com\/.+\/([-a-z0-9]+)(?:\.[a-z-]+)?\.html/i,
+    PLACE_COUNTRY_URL_CODE_REGEX: /http(?:s)?:\/\/www\.booking.com\/.+\/([a-z-]+)\//,
+    LOCALIZATION_REGEX: /(\.[a-z-]+)?\.html/gi,
 
     LABELS: {
         START: 'START',
