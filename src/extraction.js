@@ -153,6 +153,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         hasMap,
         aggregateRating,
     } = ld;
+
     const address = {
         full: streetAddress,
         postalCode,
@@ -160,6 +161,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         country: addressCountry,
         region: addressRegion,
     };
+
     const html = await page.content();
     const name = await page.$('#hp_hotel_name');
     const nameText = name ? (await getAttribute(name, 'textContent')).split('\n') : null;
@@ -168,12 +170,12 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const hType = await page.$('.hp__hotel-type-badge');
     const pType = await page.$('.bh-property-type');
     const bFast = await page.$('.ph-item-copy-breakfast-option');
+    const checkInFrom = await page.$$eval('#checkin_policy [data-from]',
+        (el) => (el.length > 0 ? el[0].getAttribute('data-from') : null));
+    const checkInTo = await page.$$eval('#checkin_policy [data-until]',
+        (el) => (el.length > 0 ? el[0].getAttribute('data-until') : null));
     const starIcons = await page.$$('.hp__hotel_ratings__stars svg');
     const loc = hasMap ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/) : null;
-    const cInOut = await page.$(
-        '.av-summary-section:nth-child(1) .bui-date-range__item:nth-child(1) .bui-date__subtitle',
-    );
-    const cMatch = cInOut ? (await getAttribute(cInOut, 'textContent')).match(/\d+:(\d+)/g) : null;
     const img1El = await page.$('.slick-track img');
     const img1 = img1El ? await getAttribute(img1El, 'src') : null;
     const img2El = await page.$('#photo_wrapper img');
@@ -201,8 +203,8 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         rating: aggregateRating ? aggregateRating.ratingValue : null,
         reviewsCount: aggregateRating ? aggregateRating.reviewCount : null,
         breakfast: bFast ? await getAttribute(bFast, 'textContent') : null,
-        checkInFrom: cMatch && cMatch.length > 1 ? cMatch[0] : null,
-        checkInTo: cMatch && cMatch.length > 1 ? cMatch[1] : null,
+        checkInFrom,
+        checkInTo,
         location: loc && loc.length > 2 ? { lat: loc[1], lng: loc[2] } : null,
         address,
         image: img1 || img2 || (img3 ? img3[1] : null),
@@ -424,7 +426,7 @@ module.exports.extractPreviewReviews = (html, extractReviewerName) => {
 
     const jsonParseCode = exportedVarsMatch
         .replace(/((\\r)?\\n)|(\\r)/gi, ' ') // replace newline characters with whitespaces
-        .replace(/( )+/g, ' '); // replace multiple whitespaces with 1;
+        .replace(/( )+/g, ' '); // replace multiple whitespaces with 1 whitespace;
 
     vm.runInContext(jsonParseCode, context);
 
@@ -537,7 +539,6 @@ const parseReviews = (reviews) => {
         const normalizedReview = { ...review };
 
         Object.keys(normalizedReview).forEach((key) => {
-            // store null instead of an empty string
             normalizedReview[key] = normalizedReview[key] || null;
         });
 
