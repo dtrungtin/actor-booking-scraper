@@ -330,11 +330,8 @@ module.exports.enqueueAllPaginationPages = async (page, requestQueue, globalCont
     }
 };
 
-module.exports.enqueueAllReviewsPages = async (page, requestQueue, detailPagename) => {
-    const detailPageUrl = await page.url();
-
+module.exports.enqueueAllReviewsPages = async (requestQueue, detailPageUrl, detailPagename, reviewsCount) => {
     const reviewsUrl = buildReviewsStartUrl(detailPageUrl);
-    const reviewsCount = await extractReviewsCount(page);
 
     const reviewPagesUrls = getReviewPagesUrls(reviewsUrl, reviewsCount);
     log.info(`Found ${reviewsCount} reviews.
@@ -412,15 +409,6 @@ const buildReviewsStartUrl = (detailPageUrl) => {
     });
 
     return reviewsUrl;
-};
-
-const extractReviewsCount = async (page) => {
-    const reviewsCountSelector = '[data-testid="review-score-component"] ._1e6021d2f';
-    const reviewsCountEl = await page.$(reviewsCountSelector);
-    const reviewsCountText = await getAttribute(reviewsCountEl, 'textContent');
-    const reviewsCount = parseInt(reviewsCountText.replace(/[^\d]+/g, ''), 10) || 0;
-
-    return reviewsCount;
 };
 
 const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {

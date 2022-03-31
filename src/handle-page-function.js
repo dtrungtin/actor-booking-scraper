@@ -90,7 +90,11 @@ const handleDetailPage = async (context, globalContext) => {
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
     if (getMaxReviewsPages() > 0) {
         addDetail(detailPagename, detail);
-        await enqueueAllReviewsPages(page, requestQueue, detailPagename);
+
+        const detailPageUrl = await page.url();
+        await enqueueAllReviewsPages(requestQueue, detailPageUrl, detailPagename, detail.reviewsCount);
+
+        await saveDetailIfComplete(detailPagename);
     } else {
         // Store userReviews extracted directly from detail page only if no reviews are scraped from extra requests.
         const reviews = extractPreviewReviews(html, extractReviewerName);
@@ -193,6 +197,10 @@ const handleReviewPage = async (context, globalContext) => {
     addReviews(detailPagename, reviews);
     removeProcessedReviewUrl(detailPagename, reviewUrl);
 
+    await saveDetailIfComplete(detailPagename);
+};
+
+const saveDetailIfComplete = async (detailPagename) => {
     const store = GlobalStore.summon();
 
     if (store.state.reviewPagesToProcess[detailPagename].length === 0) {
