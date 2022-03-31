@@ -2,6 +2,7 @@ const Apify = require('apify');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const moment = require('moment');
 
+const { GlobalStore } = require('apify-global-store');
 const {
     DATE_FORMAT,
     PROPERTY_TYPE_IDS,
@@ -121,6 +122,7 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
 
 const addPropertyTypeParameter = (propertyType, queryParameters) => {
     const setParameter = propertyType && propertyType !== 'none';
+
     queryParameters.push({ isSet: setParameter, name: 'ht_id', value: PROPERTY_TYPE_IDS[propertyType] });
 };
 
@@ -568,3 +570,21 @@ const getLocalizedUrl = (url, language) => {
 };
 
 module.exports.getLocalizedUrl = getLocalizedUrl;
+
+module.exports.validateProxy = (page, session, startUrls, requiredQueryParam) => {
+    const pageUrl = page.url();
+
+    if (!startUrls && pageUrl.indexOf(requiredQueryParam) < 0) {
+        session.retire();
+        throw new Error(`Page was not opened correctly`);
+    }
+};
+
+module.exports.saveDetailIfComplete = async (detailPagename) => {
+    const store = GlobalStore.summon();
+
+    if (store.state.reviewPagesToProcess[detailPagename].length === 0) {
+        log.info('Extracted all reviews, pushing result to the dataset...', { detailPagename });
+        await store.pushPathToDataset(`details.${detailPagename}`);
+    }
+};
