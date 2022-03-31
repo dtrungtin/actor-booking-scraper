@@ -1,4 +1,5 @@
 const Apify = require('apify');
+const { PROPERTY_TYPE_IDS } = require('./consts');
 
 const { checkDate, checkDateGap } = require('./util');
 
@@ -35,6 +36,11 @@ module.exports.validateInput = (input) => {
 
     if (startUrls && !Array.isArray(startUrls)) {
         throw new Error('WRONG INPUT: startUrls must an array!');
+    }
+
+    if (propertyType && propertyType !== 'none' && !PROPERTY_TYPE_IDS[propertyType]) {
+        throw new Error(`WRONG INPUT: invalid property type '${propertyType}'. Property type must be one of the following:
+        ${JSON.stringify(Object.keys(PROPERTY_TYPE_IDS), null, 2)}`);
     }
 
     if (minScore) {

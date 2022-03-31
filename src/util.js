@@ -121,11 +121,6 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
 
 const addPropertyTypeParameter = (propertyType, queryParameters) => {
     const setParameter = propertyType && propertyType !== 'none';
-
-    if (setParameter && !PROPERTY_TYPE_IDS[propertyType]) {
-        log.info(`Unknown property type '${propertyType}'. Valid values are: ${PROPERTY_TYPE_IDS}`);
-    }
-
     queryParameters.push({ isSet: setParameter, name: 'ht_id', value: PROPERTY_TYPE_IDS[propertyType] });
 };
 
