@@ -168,12 +168,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
     const hType = await page.$('.hp__hotel-type-badge');
     const pType = await page.$('.bh-property-type');
     const bFast = await page.$('.ph-item-copy-breakfast-option');
-    const starTitle = await page.evaluate(() => {
-        const el = document.querySelector('.bui-rating');
-        return el ? el.getAttribute('aria-label') : null;
-    });
-    const parts = starTitle ? starTitle.match(/\d/) : null;
-    const stars = parts ? parseInt(parts[0], 10) : null;
+    const starIcons = await page.$$('.hp__hotel_ratings__stars svg');
     const loc = hasMap ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/) : null;
     const cInOut = await page.$(
         '.av-summary-section:nth-child(1) .bui-date-range__item:nth-child(1) .bui-date__subtitle',
@@ -201,7 +196,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         name: nameText ? nameText[nameText.length - 1].trim() : null,
         type: homeType || propertyType,
         description: descriptionText || null,
-        stars,
+        stars: starIcons.length || null,
         price,
         rating: aggregateRating ? aggregateRating.ratingValue : null,
         reviewsCount: aggregateRating ? aggregateRating.reviewCount : null,
