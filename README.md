@@ -43,6 +43,7 @@ The input for the scraper is a JSON object with the following properties:
     "useFilters": USE_CRITERIA_FILTERING,
     "minScore": MINIMUM_HOTEL_RATING,
     "maxPages": MAXIMUM_PAGINATION_PAGES,
+    "maxReviewsPages": MAXIMUM_REVIEWS_PAGINATION_PAGES,
     "concurrency": MAXIMUM_CONCURRENT_PAGES,
     "checkIn": CHECK_IN_DATE,
     "checkOut": CHECK_OUT_DATE,
@@ -54,6 +55,7 @@ The input for the scraper is a JSON object with the following properties:
     "sortBy": BOOKING_SORT_TYPE,
     "propertyType": PROPERTY_TYPE,
     "minMaxPrice": MIN_MAX_PRICE_RANGE,
+    "scrapeReviewerName": SCRAPE_REVIEWER_NAME,
     "proxyConfig": APIFY_PROXY_CONFIG,
     "extendOutputFunction": EXTEND_OUTPUT_FUNCTION
 }
@@ -65,6 +67,7 @@ The input for the scraper is a JSON object with the following properties:
 * `useFilters` sets if the crawler should utilize criteria filters to overcome the limit for 1000 results.
 * `minScore` specifies the minimum allowed rating of the hotel to be included in results.
 * `maxPages` sets maximum number of pagination pages to be crawled.
+* `maxReviewsPages` sets maximum number of reviews pagination pages to be crawled. It works only with `simple` field set to `false`. You'll get up to 10 reviews even with setting max reviews to 0 as they can be scraped directly from the detail page without any extra overhead. When set on value > 0, the reviews from the detail page won't be scraped and reviews pagination pages will be crawled instead.
 * `checkIn` check-in date in the yyyy-mm-dd format.
 * `checkOut` check-out date in the yyyy-mm-dd format.
 * `rooms` number of rooms to be set for the search.
@@ -98,6 +101,7 @@ You can use one of the following formats (or exclude the attribute from INPUT co
 and you don't need to limit yourself on the given ranges from the booking.com website. You can even specify a more specific
 price range than booking.com offers in its price filters (e.g. Booking has price category 500+ but you can set values
 such as 520-550, 650-680, 700+, ...). The values apply to the currency provided as another INPUT attribute.
+* `scrapeReviewerName` includes names of the reviewers in the result, default is `false`. You should only scrape reviewer name if you have a legit reason to do so.
 * `proxyConfig` defines Apify Proxy configuration, it should respect this format:
 ```json
 "proxyConfig": {
@@ -174,57 +178,133 @@ If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is 
 }
 ```
 
-Otherwise the output will be much more comprehensive, especially the `rooms` array, which will, however,
-contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
+Otherwise the output will be much more comprehensive, especially the `rooms` array. When `checkIn` and `checkOut` INPUT attributes are set, `rooms` array will contain more detailed info such as price or room features. These fields will be omitted without `checkIn` and `checkOut` specified.
+
+Reviews will also be included in a detailed result. You'll get `categoryReviews` with review score for the individual criteria such as location, staff or value for money. Apart from `categoryReviews`, the result will also contain `reviews` array holding structured reviews directly from the users. You'll always find at least a few reviews from the detail page preview in there (10 reviews at the most). If you'd like to scrape more reviews, you'll need to set `maxReviewsPages` accordingly. For `maxReviewsPages = 1`, one extra request for reviews pagination will be enqueued. Each review page offers 25 reviews as the maximum. Depending on the `extractReviewerName` input field, the `guestName` field will be provided or excluded.
 
 ```json
 {
-  "url": "https://www.booking.com/hotel/cz/elia-ky-kra-snohorska-c-apartments-prague.en-gb.html",
-  "name": "Centrum Apartments Old Town",
-  "type": "Apartment",
-  "description": "Situated in the centre of Prague in a historical building near the Pařížská street, 500 metres from the Old Town Square, the Pragueaparts Old town E offers...",
+  "order": 8,
+  "url": "https://www.booking.com/hotel/cz/alfons.html?selected_currency=EUR&changed_currency=1&top_currency=1&lang=en-us&group_adults=2&no_rooms=1&review_score=90&ht_id=204&checkin=2022-06-10&checkout=2022-06-12",
+  "name": "Alfons Boutique Hotel",
+  "type": "Hotel",
+  "description": "You're eligible for a Genius discount at Alfons Boutique Hotel! To save at this property, all you have to do is sign in.\nAlfons Boutique Hotel in Prague, a 10-minute walk from Wenceslas Square and Prague National Museum offers free WiFi and barbecue facilities. The hotel features a garden and a terrace.\nThe hotel's cozy rooms are equipped with a flat-screen TV. All rooms come with a coffee machine and a private bathroom with a shower, while certain rooms come with a kitchen. Guest rooms have a wardrobe.\nA continental breakfast is available every morning at the property.\nHiking is among the activities that guests can enjoy near Alfons Boutique Hotel.\nAlfons Boutique Hotel is located across the road from the closest metro stop. Prague Astronomical Clock is 1.1 mi from the accommodations, while Vaclav Havel Airport is a 30-minute drive from the property.",
   "stars": 4,
-  "rating": 10,
-  "reviews": 7,
-  "breakfast": null,
-  "checkInFrom": "15:00",
-  "checkInTo": "00:00",
+  "price": 184,
+  "rating": 9.1,
+  "reviewsCount": 898,
+  "breakfast": "Continental, Vegetarian, Gluten-free, American, Buffet",
+  "checkInFrom": "14:00",
+  "checkInTo": "22:00",
   "location": {
-    "lat": "50.0903216",
-    "lng": "14.4199419"
+    "lat": "50.0739590",
+    "lng": "14.4300880"
   },
   "address": {
-    "full": "Elišky Krásnohorské 2, Prague, 11000, Czech Republic",
-    "postalCode": "11000",
-    "street": "Elišky Krásnohorské 2",
+    "full": "Legerova 41, Prague, 120 00, Czech Republic",
+    "postalCode": "120 00",
+    "street": "Legerova 41",
     "country": "Czech Republic",
     "region": ""
   },
-  "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/303439628.jpg?k=7f001a9cbf85160050efc5437e3ba5adac7b23db47a5a2dbb8c10640b4e7b042&o=&hp=1",
-  "images": [
-    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/303439628.jpg?k=7f001a9cbf85160050efc5437e3ba5adac7b23db47a5a2dbb8c10640b4e7b042&o=&hp=1",
-    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/202101343.jpg?k=afd7a3e75f1f758b4137f9605645e7e23d42eadc9e18137d3c435d628b11c46d&o=&hp=1",
-    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/183313960.jpg?k=fb7411388bf11432cf7613ab3318d5b5f1d767741f18095d034d4f430252a841&o=&hp=1"
-  ],
+  "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/321992025.jpg?k=6395153148c192c41b9301ced1766d6f5108871233740f5470e1d804c0eea0bf&o=&hp=1",
   "rooms": [
     {
       "available": true,
-      "roomType": "Deluxe Three-Bedroom Apartment with Terrace",
-      "bedType": " Bedroom 1: 1 extra-large double bed Bedroom 2: 2 single beds Bedroom 3: 3 single beds and 1 sofa bed ",
-      "persons": 1,
-      "price": 85.54,
-      "currency": "€",
+      "roomType": "King Room",
+      "price": 184,
+      "currency": "€ ",
       "features": [
-        "80 m²",
-        "City view",
-        "Terrace",
-        "Flat-screen TV",
+        "194 feet²",
         "Air conditioning",
-        "Private bathroom"
+        "Attached bathroom",
+        "Flat-screen TV",
+        "Coffee machine",
+        "Minibar",
+        "Free WiFi",
+        "Free toiletries",
+        "Safe",
+        "Toilet",
+        "Bathtub or shower",
+        "Hardwood or parquet floors",
+        "Towels",
+        "Linens",
+        "Socket near the bed",
+        "Cleaning products",
+        "Hypoallergenic",
+        "Desk",
+        "TV",
+        "Telephone",
+        "Satellite channels",
+        "Tea/Coffee maker",
+        "Radio",
+        "Heating",
+        "Hairdryer",
+        "Electric kettle",
+        "Cable channels",
+        "Wardrobe or closet",
+        "Upper floors accessible by elevator",
+        "Clothes rack",
+        "Fold-up bed",
+        "Toilet paper"
       ],
       "conditions": [
-        "Non-refundable"
+        "Excellent breakfast € 10",
+        "Free cancellation until 18:00 on June 2, 2022",
+        "Pay in advance",
+        "No modifications",
+        "Confirmed within 2 minutes",
+        "Learn more"
       ]
+    }
+  ],
+  "images": [
+    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/321992025.jpg?k=6395153148c192c41b9301ced1766d6f5108871233740f5470e1d804c0eea0bf&o=&hp=1",
+    "https://cf.bstatic.com/xdata/images/hotel/max1024x768/304687325.jpg?k=bb24287d18bf935bfb3c5f4c62983c280c3c68b6bc4631f82fff93e437952aac&o=&hp=1"
+  ],
+  "categoryReviews": [
+    {
+      "title": "Location",
+      "score": 9.1
+    },
+    {
+      "title": "Cleanliness",
+      "score": 9.4
+    },
+    {
+      "title": "Staff",
+      "score": 9.3
+    },
+    {
+      "title": "Comfort",
+      "score": 9.4
+    },
+    {
+      "title": "Value for money",
+      "score": 9.1
+    },
+    {
+      "title": "Facilities",
+      "score": 9.1
+    },
+    {
+      "title": "Free WiFi",
+      "score": 9.5
+    }
+  ],
+  "reviews": [
+    {
+      "title": "Exceptional",
+      "score": 10,
+      "positive": "Hotel was very nice, quiet and cozy. Staff was very friendly and was able to recommend some great places to eat.",
+      "negative": "There wasn't anything I didn't like.",
+      "travellerType": "Couple",
+      "room": "King Room",
+      "nightsStay": 1,
+      "date": "8, 2021",
+      "country": "United States of America",
+      "countryCode": "us",
+      "photos": []
     }
   ]
 }
@@ -236,6 +316,6 @@ contain data only if the `checkIn` and `checkOut` INPUT attributes are set.
 
 * Booking.com will only display a maximum of 1,000 results; if you need to circumvent this limitation, you can utilize the `useFilters` INPUT attribute. However, using any limiting filters in start URLs will not be possible because the scraper will override those.
 
-* If you need to get data about specific rooms, the crawler needs to be started with `checkIn` and `checkOut` INPUT attributes (Booking.com only shows room info for specific dates).
+* If you need to get detailed data about specific rooms, the crawler needs to be started with `checkIn` and `checkOut` INPUT attributes (Booking.com only shows complete room info for specific dates).
 
 * Booking.com may return some suggested hotels outside of the expected city/region as a recommendation. The actor will return all of them in the crawling results, so you may get more results than your search.
