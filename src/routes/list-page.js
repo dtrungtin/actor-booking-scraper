@@ -1,11 +1,17 @@
 const Apify = require('apify');
 
-const { LABELS, MAX_PAGES, RESULTS_PER_PAGE } = require('../consts');
+const { LABELS, RESULTS_PER_PAGE } = require('../consts');
 const { listPageFunction } = require('../extraction/list-page-extraction');
-const { getRemainingPages, getCrawledNames, addCrawledName } = require('../global-store');
+const { shouldUseFilters, enqueueFilteredPages } = require('../filters');
+
 const {
-    enqueueAllPaginationPages,
-    enqueueFilterLinks,
+    getRemainingPages,
+    getCrawledNames,
+    addCrawledName,
+    decrementRemainingPages,
+} = require('../global-store');
+
+const {
     fixUrl,
     getAttribute,
     getLocalizedUrl,
@@ -76,18 +82,6 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
     }
 };
 
-const enqueueFilteredPages = async ({ page, request, requestQueue }) => {
-    log.info('enqueuing filtered pages...');
-
-    const attribute = 'value';
-    const unchecked = `[type="checkbox"][${attribute}]:not([checked]):not(.bui-checkbox__input)`;
-
-    const extractionInfo = { page, unchecked, attribute };
-    const urlInfo = { baseUrl: request.url, label: LABELS.START };
-
-    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue);
-};
-
 const enqueueDetailPages = async (page, input, requestQueue) => {
     log.info('enqueuing detail pages...');
 
@@ -154,15 +148,6 @@ const validateProxy = (page, session, startUrls, requiredQueryParam) => {
     }
 };
 
-const shouldUseFilters = (totalResults, useFilters) => {
-    const maxResults = MAX_PAGES * RESULTS_PER_PAGE;
-    const remainingPages = getRemainingPages();
-
-    const requiresPagesOverLimit = remainingPages > MAX_PAGES;
-
-    return useFilters && totalResults > maxResults && requiresPagesOverLimit;
-};
-
 const getCurrentPageResultsCount = async (page) => {
     // eslint-disable-next-line max-len
     const items = await page.$$(
@@ -200,4 +185,52 @@ const extractListPageResults = async (page, request, input) => {
     }
 
     return toBeAdded;
+};
+
+/**
+ * Extracts information from the detail page and enqueue all pagination pages.
+ *
+ * @param {Page} page - The Puppeteer page object.
+ * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
+ * @param {{ input: Object }} globalContext - Actor's global context.
+ */
+const enqueueAllPaginationPages = async (page, requestQueue, globalContext) => {
+    const { input } = globalContext;
+
+    const baseUrl = page.url();
+    if (baseUrl.indexOf('offset') < 0) {
+        log.info('enqueuing pagination pages...');
+        const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
+        try {
+            const pageUrl = await page.url();
+            await page.waitForSelector(countSelector);
+            const countElem = await page.$(countSelector);
+            const countData = (await getAttribute(countElem, 'textContent')).replace(/\.|,|\s/g, '').match(/\d+/);
+
+            if (countData) {
+                const count = Math.ceil(parseInt(countData[0], 10) / RESULTS_PER_PAGE);
+                log.info(`pagination pages: ${count}`);
+
+                for (let i = 1; i < count; i++) {
+                    const newOffset = RESULTS_PER_PAGE * i;
+                    const newUrl = pageUrl.includes('offset=')
+                        ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
+                        : `${pageUrl}&offset=${newOffset}`;
+
+                    if (getRemainingPages() < 1) {
+                        break;
+                    }
+
+                    decrementRemainingPages();
+
+                    await requestQueue.addRequest({
+                        url: addUrlParameters(newUrl, input),
+                        userData: { label: 'page' },
+                    });
+                }
+            }
+        } catch (e) {
+            log.warning(e);
+        }
+    }
 };
