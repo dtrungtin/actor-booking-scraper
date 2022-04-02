@@ -7,10 +7,8 @@ module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
             maxReviewsPages,
             details: {},
             reviewPagesToProcess: {},
-            useFiltersData: {
-                crawledNames: [],
-                enqueuedUrls: [],
-            },
+            crawledNames: [],
+            enqueuedUrls: [],
         },
     });
 
@@ -75,26 +73,26 @@ module.exports.removeProcessedReviewUrl = (detailPagename, reviewUrl) => {
 
 module.exports.addCrawledName = (crawledName) => {
     const store = GlobalStore.summon();
-    const { state: { useFiltersData: { crawledNames } } } = store;
+    const { state: { crawledNames } } = store;
 
     const updatedCrawledNames = [
         ...crawledNames,
         crawledName,
     ];
 
-    store.setPath('useFiltersData.crawledNames', updatedCrawledNames);
+    store.setPath('crawledNames', updatedCrawledNames);
 };
 
 module.exports.addEnqueuedUrl = (enqueuedUrl) => {
     const store = GlobalStore.summon();
-    const { state: { useFiltersData: { enqueuedUrls } } } = store;
+    const { state: { enqueuedUrls } } = store;
 
     const updatedEnqueuedUrls = [
         ...enqueuedUrls,
         enqueuedUrl,
     ];
 
-    store.setPath('useFiltersData.enqueuedUrls', updatedEnqueuedUrls);
+    store.setPath('enqueuedUrls', updatedEnqueuedUrls);
 };
 
 /**
@@ -124,7 +122,7 @@ module.exports.getMaxReviewsPages = () => {
 module.exports.getEnqueuedUrls = () => {
     const store = GlobalStore.summon();
 
-    return store.state.useFiltersData.enqueuedUrls;
+    return store.state.enqueuedUrls;
 };
 
 /**
@@ -134,5 +132,5 @@ module.exports.getEnqueuedUrls = () => {
 module.exports.getCrawledNames = () => {
     const store = GlobalStore.summon();
 
-    return store.state.useFiltersData.crawledNames;
+    return store.state.crawledNames;
 };
