@@ -176,8 +176,8 @@ const extractListPageResults = async (page, request, input) => {
             const crawledNames = getCrawledNames();
 
             if (!crawledNames.includes(item.name)) {
-                toBeAdded.push(item);
                 addCrawledName(item.name);
+                toBeAdded.push(item);
             }
         }
 
@@ -225,7 +225,9 @@ const enqueueAllPaginationPages = async (page, requestQueue, globalContext) => {
 
                     await requestQueue.addRequest({
                         url: addUrlParameters(newUrl, input),
-                        userData: { label: 'page' },
+                        userData: {
+                            label: LABELS.PAGE,
+                        },
                     });
                 }
             }
