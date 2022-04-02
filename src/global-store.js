@@ -29,7 +29,7 @@ module.exports.addDetail = (detailPagename, detail) => {
     const { details } = store.state;
 
     /**
-     * We have to use detailPagename as key instead of raw url
+     * We cannot use raw url directly as the key. We use detailPagename
      * to ensure that store.pushPathToDataset is working correctly
      * (urls include '.html' substring which is interpreted as
      * another nested field named 'html')

@@ -2,9 +2,9 @@ const Apify = require('apify');
 
 const { LABELS } = require('./consts');
 
-const { handleDetailPage } = require('./routes/detail-page');
-const { handleReviewPage } = require('./routes/review-page');
-const { handleListPage } = require('./routes/list-page');
+const { handleDetailPage } = require('./routes/detail-page-route');
+const { handleReviewPage } = require('./routes/review-page-route');
+const { handleListPage } = require('./routes/list-page-route');
 
 const { log } = Apify.utils;
 
