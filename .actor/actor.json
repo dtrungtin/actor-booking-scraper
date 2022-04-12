@@ -1,0 +1,59 @@
+{
+    "actorSpecification": 1,
+    "name": "booking-scraper",
+    "title": "Booking Scraper",
+    "description": "Scrapes results from Booking.com",
+    "version": "0.0.1",
+    "storages": {
+        "dataset": {
+            "actorSpecification": 1,
+            "title": "Booking Scraper",
+            "description": "Too see all scraped properties, export the whole dataset or select All fields instead of Overview",
+            "views": {
+                "overview": {
+                    "title": "Overview",
+                    "description": "",
+                    "transformation": {
+                        "fields": [
+                            "name",
+                            "address",
+                            "rating",
+                            "reviews",
+                            "url"                        ],
+                        "unwind": ["organicResults"]  
+                    },
+                    "display": {
+                        "component": "table",
+                        "columns": [
+                            { 
+                                "label": "Name",
+                                "format": "text",
+                                "field": "name"
+                            },
+                            { 
+                                "label": "Address",
+                                "format": "text",
+                                "field": "address"
+                            },
+                            { 
+                                "label": "Rating",
+                                "format": "text",
+                                "field": "rating"
+                            },
+                            { 
+                                "label": "Reviews",
+                                "format": "text",
+                                "field": "reviews"
+                            },
+                            { 
+                                "label": "URL",
+                                "format": "text",
+                                "field": "url"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
