@@ -370,7 +370,7 @@
             "description": "SHADER proxy group usually works the best if you have access to it.",
             "prefill": { "useApifyProxy": true },
             "editor": "proxy",
-            "sectionCaption": "Advanced options (proxy configuration, extend output)"
+            "sectionCaption": "Advanced options (proxy configuration, extend output, debug mode)"
         },
         "testProxy": {
             "title": "Test proxies (useful for proxy groups with many blocked IPs, experimental)",
@@ -385,6 +385,13 @@
             "description": "Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output",
             "prefill": "($) => { return {} }",
             "editor": "javascript"
+        },
+        "debug": {
+            "title": "Debugging mode",
+            "type": "boolean",
+            "description": "Check if you want to display debug logs.",
+            "default": false,
+            "nullable": false
         }
     },
     "required": ["proxyConfig"]

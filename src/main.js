@@ -10,8 +10,14 @@ const { log } = Apify.utils;
 
 Apify.main(async () => {
     const input = await Apify.getValue('INPUT');
+
     validateInput(input);
     cleanInput(input);
+
+    if (input.debug) {
+        log.setLevel(log.LEVELS.DEBUG);
+    }
+
     const extendOutputFunction = evalExtendOutputFn(input);
 
     const {
