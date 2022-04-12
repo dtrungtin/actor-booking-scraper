@@ -2,7 +2,13 @@ const Apify = require('apify');
 const Puppeteer = require('puppeteer'); // eslint-disable-line
 const moment = require('moment');
 
-const { DATE_FORMAT, DEFAULT_MIN_SCORE, PROPERTY_TYPE_IDS, RESULTS_PER_PAGE } = require('./consts');
+const { GlobalStore } = require('apify-global-store');
+const {
+    DATE_FORMAT,
+    PROPERTY_TYPE_IDS,
+    PLACE_URL_NAME_REGEX,
+    LOCALIZATION_REGEX,
+} = require('./consts');
 
 const { log } = Apify.utils;
 
@@ -20,6 +26,7 @@ const getAttribute = async (element, attr, fallback = '') => {
         return fallback;
     }
 };
+
 module.exports.getAttribute = getAttribute;
 
 /**
@@ -103,10 +110,6 @@ const addUrlParametersForHotelDetailUrl = (url, input) => {
 const addPropertyTypeParameter = (propertyType, queryParameters) => {
     const setParameter = propertyType && propertyType !== 'none';
 
-    if (setParameter && !PROPERTY_TYPE_IDS[propertyType]) {
-        log.info(`Unknown property type '${propertyType}'. Valid values are: ${PROPERTY_TYPE_IDS}`);
-    }
-
     queryParameters.push({ isSet: setParameter, name: 'ht_id', value: PROPERTY_TYPE_IDS[propertyType] });
 };
 
@@ -133,7 +136,18 @@ const addCheckInCheckOutParameters = (checkIn, checkOut, queryParameters) => {
 };
 
 const addUrlParametersForHotelListingUrl = (url, input) => {
-    const { currency, language, adults, children, rooms, minScore, minMaxPrice, propertyType, checkIn, checkOut } = input;
+    const {
+        currency,
+        language,
+        adults,
+        children,
+        rooms,
+        minScore,
+        minMaxPrice,
+        propertyType,
+        checkIn,
+        checkOut,
+    } = input;
 
     const extendedUrl = new URL(url);
 
@@ -145,7 +159,7 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
         { isSet: adults, name: 'group_adults', value: adults },
         { isSet: children, name: 'group_children', value: children },
         { isSet: rooms, name: 'no_rooms', value: rooms },
-        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : DEFAULT_MIN_SCORE },
+        { isSet: true, name: 'review_score', value: minScore ? parseFloat(minScore) * 10 : undefined },
     ];
 
     const currencyValue = extendedUrl.searchParams.get('selected_currency') || 'USD';
@@ -156,7 +170,7 @@ const addUrlParametersForHotelListingUrl = (url, input) => {
 
     queryParameters.forEach((parameter) => {
         const { isSet, name, value } = parameter;
-        if (isSet && !extendedUrl.searchParams.has(name) && !url.includes(`nflt=${name}`)) {
+        if (isSet && value && !extendedUrl.searchParams.has(name) && !url.includes(`nflt=${name}`)) {
             /* we need to check for url.includes besides searchParams.has because if startUrl is specified,
             it might use nflt=param_name which can not be checked by searchParams.has effectively due to URI encoding */
             extendedUrl.searchParams.set(name, value);
@@ -191,7 +205,9 @@ module.exports.fixUrl = (s, input) => (href) => {
         const lng = input.language.replace('_', '-');
         if (href.indexOf(s)) {
             href.replace(s, `${s}lang=${lng}${s}`);
-        } else { href += `${s}lang=${lng}`; }
+        } else {
+            href += `${s}lang=${lng}`;
+        }
     }
     if (input.currency && href.indexOf('currency') < 0) {
         href += `${s}selected_currency=${input.currency.toUpperCase()}${s}changed_currency=1${s}top_currency=1`;
@@ -238,7 +254,11 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
     if (checkIn && checkOut) {
         if (!checkOut.isSameOrAfter(checkIn)) {
             // eslint-disable-next-line max-len
-            throw new Error(`WRONG INPUT: checkOut ${checkOut.format(DATE_FORMAT)} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`);
+            throw new Error(
+                `WRONG INPUT: checkOut ${checkOut.format(
+                    DATE_FORMAT,
+                )} date should be greater than checkIn ${checkIn.format(DATE_FORMAT)} date`,
+            );
         }
 
         return checkOut.diff(checkIn, 'days', true);
@@ -247,89 +267,7 @@ module.exports.checkDateGap = (checkIn, checkOut) => {
     return -1;
 };
 
-/**
- * Extracts information from the detail page and enqueue all pagination pages.
- *
- * @param {Page} page - The Puppeteer page object.
- * @param {RequestQueue} requestQueue - RequestQueue to add the requests to.
- * @param {{ input: Object, remainingPages: number }} globalContext - Actor's global context.
- */
-module.exports.enqueueAllPages = async (page, requestQueue, globalContext) => {
-    const { input } = globalContext;
-    const baseUrl = page.url();
-    if (baseUrl.indexOf('offset') < 0) {
-        log.info('enqueuing pagination pages...');
-        const countSelector = '.sorth1, .sr_header h1, .sr_header h2, [data-capla-component*="HeaderDesktop"] h1';
-        try {
-            const pageUrl = await page.url();
-            await page.waitForSelector(countSelector);
-            const countElem = await page.$(countSelector);
-            const countData = (await getAttribute(countElem, 'textContent')).replace(/\.|,|\s/g, '').match(/\d+/);
-
-            if (countData) {
-                const count = Math.ceil(parseInt(countData[0], 10) / RESULTS_PER_PAGE);
-                log.info(`pagination pages: ${count}`);
-
-                for (let i = 1; i < count; i++) {
-                    const newOffset = RESULTS_PER_PAGE * i;
-                    const newUrl = pageUrl.includes('offset=')
-                        ? pageUrl.replace(/offset=(\d+)/, `offset=${newOffset}`)
-                        : `${pageUrl}&offset=${newOffset}`;
-
-                    if (globalContext.remainingPages < 1) {
-                        break;
-                    }
-
-                    globalContext.remainingPages--;
-
-                    await requestQueue.addRequest({
-                        url: addUrlParameters(newUrl, input),
-                        userData: { label: 'page' },
-                    });
-                }
-            }
-        } catch (e) {
-            log.info(e);
-        }
-    }
-};
-
-module.exports.enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
-    const { page, unchecked, attribute } = extractionInfo;
-    const { label, baseUrl } = urlInfo;
-    const { state: { enqueuedUrls } } = globalContext;
-
-    const url = new URL(baseUrl);
-
-    const uncheckedElements = await page.$$(unchecked);
-    const uncheckedFilters = await getFilterNameValues(uncheckedElements, attribute);
-
-    const validFilters = getValidFilters(uncheckedFilters);
-    const filtersToEnqueue = getFiltersToEnqueue(validFilters, enqueuedUrls, url);
-    const newFiltersCount = filtersToEnqueue.length;
-
-    if (newFiltersCount) {
-        log.info(`enqueuing pages with ${filtersToEnqueue.length} new filters set...`);
-    }
-
-    await enqueueFilters(filtersToEnqueue, requestQueue, label, baseUrl, enqueuedUrls, globalContext);
-};
-
 module.exports.isObject = (val) => typeof val === 'object' && val !== null && !Array.isArray(val);
-
-const getFilterNameValues = async (elements, attribute) => {
-    const nameValues = {};
-
-    for (const element of elements) {
-        const filterValue = await getAttribute(element, attribute);
-
-        const [name, value] = filterValue.split('=');
-        nameValues[name] = nameValues[name] || [];
-        nameValues[name].push(value);
-    }
-
-    return nameValues;
-};
 
 /**
  *
@@ -340,95 +278,51 @@ const convertMomentToDate = (time) => {
     return time.toDate().setHours(0, 0, 0, 0);
 };
 
-const getValidFilters = (uncheckedFilters) => {
-    const validFilters = { ...uncheckedFilters };
+/**
+ *
+ * @param {string} detailPageUrl
+ * @returns
+ */
+const getPagename = (detailPageUrl) => {
+    const placeNameMatches = PLACE_URL_NAME_REGEX.exec(detailPageUrl);
+    const placeNameMatch = placeNameMatches ? placeNameMatches[1] : '';
 
-    /* Exclude review_score from filter enqueuing. It has a strict value for each run that can not be changed
-    (even if it's unspecified in the input - default value is DEFAULT_MIN_SCORE). */
-    delete validFilters.review_score;
-
-    // Invalid filter that is scraped among other checkboxes.
-    delete validFilters['1'];
-
-    return validFilters;
+    return placeNameMatch;
 };
 
-const getFiltersToEnqueue = (filters, enqueuedUrls, url) => {
-    const filtersToEnqueue = [];
+module.exports.getPagename = getPagename;
 
-    Object.keys(filters).forEach((name) => {
-        const values = filters[name].filter((value) => {
-            // remove value which is included with the same parameter in current url
-            return value && !url.search.includes(`${name}=${value}`);
-        });
+const getLocalizedUrl = (url, language) => {
+    const localizedUrl = language
+        ? url.replace(LOCALIZATION_REGEX, `.${language}.html`)
+        : url;
 
-        const isFilterEnqueued = isFilterAlreadyEnqueued(name, url, enqueuedUrls);
-
-        if (!isFilterEnqueued) {
-            filtersToEnqueue.push({ name, values });
-        }
-    });
-
-    return filtersToEnqueue;
+    return localizedUrl;
 };
 
-const isFilterAlreadyEnqueued = (name, url, enqueuedUrls) => {
-    const updatedUrl = new URL(url);
-    updatedUrl.searchParams.set(name, 'example');
+module.exports.getLocalizedUrl = getLocalizedUrl;
 
-    for (const enqueuedUrl of enqueuedUrls) {
-        if (haveSameQueryParamNames(updatedUrl, enqueuedUrl)) {
-            return true;
-        }
+module.exports.validateProxy = (page, session, startUrls, requiredQueryParam) => {
+    const pageUrl = page.url();
+
+    if (!startUrls && pageUrl.indexOf(requiredQueryParam) < 0) {
+        session.retire();
+        throw new Error(`Page was not opened correctly`);
     }
-
-    return false;
 };
 
-const haveSameQueryParamNames = (firstUrl, secondUrl) => {
-    if (firstUrl.pathname !== secondUrl.pathname) {
-        return false;
+module.exports.saveDetailIfComplete = async (detailPagename) => {
+    const store = GlobalStore.summon();
+
+    if (store.state.reviewPagesToProcess[detailPagename].length === 0) {
+        log.info('Extracted all reviews, pushing result to the dataset...', { detailPagename });
+        await store.pushPathToDataset(`details.${detailPagename}`);
     }
-
-    /* Cross validation with matching firstUrl -> secondUrl parameters
-       as well as secondUrl -> firstUrl parameters. The length of searchParams
-       iterable can not be checked directly without looping through it.
-    */
-
-    for (const key of firstUrl.searchParams.keys()) {
-        if (!secondUrl.searchParams.has(key)) {
-            return false;
-        }
-    }
-
-    for (const key of secondUrl.searchParams.keys()) {
-        if (!firstUrl.searchParams.has(key)) {
-            return false;
-        }
-    }
-
-    return true;
 };
 
-const enqueueFilters = async (filters, requestQueue, label, baseUrl, enqueuedUrls, globalContext) => {
-    for (const filter of filters) {
-        const { name, values } = filter;
-
-        // Enqueue filter with all possible values.
-        for (const value of values) {
-            const url = new URL(baseUrl);
-            url.searchParams.set(name, value);
-
-            // Check that url with the exact same filters and values doesn't exist already.
-            if (!enqueuedUrls.includes(url) && globalContext.remainingPages > 0) {
-                globalContext.remainingPages--;
-                enqueuedUrls.push(url);
-
-                await requestQueue.addRequest({
-                    url: url.toString(),
-                    userData: { label },
-                });
-            }
-        }
+module.exports.setHtmlDebugValue = async (page, valueName) => {
+    if (log.getLevel() === log.LEVELS.DEBUG) {
+        const html = await page.content();
+        await Apify.setValue(valueName, html, { contentType: 'text/html' });
     }
 };

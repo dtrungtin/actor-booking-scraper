@@ -1,4 +1,5 @@
 const Apify = require('apify');
+const { PROPERTY_TYPE_IDS } = require('./consts');
 
 const { checkDate, checkDateGap } = require('./util');
 
@@ -18,9 +19,9 @@ module.exports.validateInput = (input) => {
     }
     // On Apify platform, proxy is mandatory
     if (Apify.isAtHome()) {
-        const usesApifyProxy = proxyConfig && proxyConfig.useApifyProxy;
-        const usesCustomProxies = proxyConfig
-            && Array.isArray(proxyConfig.proxyUrls) && proxyConfig.proxyUrls.length > 0;
+        const { useApifyProxy, proxyUrls } = proxyConfig;
+        const usesApifyProxy = proxyConfig && useApifyProxy;
+        const usesCustomProxies = proxyConfig && Array.isArray(proxyUrls) && proxyUrls.length > 0;
         if (!(usesApifyProxy || usesCustomProxies)) {
             throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
         }
@@ -35,6 +36,11 @@ module.exports.validateInput = (input) => {
 
     if (startUrls && !Array.isArray(startUrls)) {
         throw new Error('WRONG INPUT: startUrls must an array!');
+    }
+
+    if (propertyType && propertyType !== 'none' && !PROPERTY_TYPE_IDS[propertyType]) {
+        throw new Error(`WRONG INPUT: invalid property type '${propertyType}'. Property type must be one of the following:
+        ${JSON.stringify(Object.keys(PROPERTY_TYPE_IDS), null, 2)}`);
     }
 
     if (minScore) {
@@ -79,7 +85,9 @@ module.exports.evalExtendOutputFn = (input) => {
             throw new Error(`WRONG INPUT: 'extendOutputFunction' is not valid Javascript! Error: ${e}`);
         }
         if (typeof extendOutputFunction !== 'function') {
-            throw new Error('WRONG INPUT: extendOutputFunction is not a function! Please fix it or use just default ouput!');
+            throw new Error(
+                'WRONG INPUT: extendOutputFunction is not a function! Please fix it or use just default ouput!',
+            );
         }
     }
     return extendOutputFunction;

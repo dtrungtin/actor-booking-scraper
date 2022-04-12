@@ -17,6 +17,14 @@
             "maximum": 1000000,
             "prefill": 2
         },
+        "maxReviewsPages": {
+            "title": "Maximum reviews pagination pages",
+            "type": "integer",
+            "description": "Number of reviews pages to be crawled for each detail page. You'll automatically get up to 10 reviews from the detail page without setting this field and going through reviews pagination.",
+            "maximum": 1000000,
+            "prefill": 1,
+            "default": 0
+        },
         "simple": {
             "title": "Extract only basic information (no detail)",
             "type": "boolean",
@@ -353,13 +361,19 @@
             "editor": "textfield",
             "prefill": "100-150"
         },
+        "scrapeReviewerName": {
+            "title": "Reviewer name",
+            "type": "boolean",
+            "description": "Extract reviewer name only if you have a legit reason to do so.",
+            "default": false
+        },
         "proxyConfig": {
             "title": "Proxy Configuration",
             "type": "object",
             "description": "SHADER proxy group usually works the best if you have access to it.",
             "prefill": { "useApifyProxy": true },
             "editor": "proxy",
-            "sectionCaption": "Advanced options (proxy configuration, extend output)"
+            "sectionCaption": "Advanced options (proxy configuration, extend output, debug mode)"
         },
         "testProxy": {
             "title": "Test proxies (useful for proxy groups with many blocked IPs, experimental)",
@@ -374,6 +388,13 @@
             "description": "Function that takes a JQuery handle ($) as argument and returns data that will be merged with the default output",
             "prefill": "($) => { return {} }",
             "editor": "javascript"
+        },
+        "debug": {
+            "title": "Debugging mode",
+            "type": "boolean",
+            "description": "Check if you want to display debug logs.",
+            "default": false,
+            "nullable": false
         }
     },
     "required": ["proxyConfig"]

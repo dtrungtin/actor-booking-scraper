@@ -1,4 +1,15 @@
-## 2022-1-10
+## 2022-04-03
+
+- Added user reviews extraction from both detail page and reviews pagination pages
+- Added category reviews extraction from detail page
+- Removed default settings `minScore = 8.4`
+- Fixed language settings for detail page (`language` input field was not respected)
+- Fixed `stars` extraction from detail page
+- Fixed `checkInFrom` and `checkInTo` extraction from detail page
+- Handled global state with external package `apify-global-store`
+- Split code into more source files, created `extraction` and `routes` folders
+
+## 2022-01-10
 
 - Fixed rejection of current date in `checkIn` and `checkOut` fields
 
