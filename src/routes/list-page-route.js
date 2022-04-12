@@ -13,6 +13,7 @@ const {
 
 const {
     fixUrl,
+    setHtmlDebugValue,
     getAttribute,
     getLocalizedUrl,
     addUrlParameters,
@@ -26,6 +27,7 @@ module.exports.handleListPage = async (context, globalContext) => {
     const { startUrls, simple } = input;
     const { userData: { label } } = request;
 
+    await setHtmlDebugValue(page, 'LIST_PAGE');
     await waitForListPageToLoad(page);
 
     // Check if the page was opened through working proxy.

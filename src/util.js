@@ -319,3 +319,10 @@ module.exports.saveDetailIfComplete = async (detailPagename) => {
         await store.pushPathToDataset(`details.${detailPagename}`);
     }
 };
+
+module.exports.setHtmlDebugValue = async (page, valueName) => {
+    if (log.getLevel() === log.LEVELS.DEBUG) {
+        const html = await page.content();
+        await Apify.setValue(valueName, html, { contentType: 'text/html' });
+    }
+};

@@ -7,6 +7,7 @@ const {
     validateProxy,
     saveDetailIfComplete,
     isObject,
+    setHtmlDebugValue,
     getAttribute,
     getPagename,
     getLocalizedUrl,
@@ -24,9 +25,7 @@ module.exports.handleDetailPage = async (context, globalContext) => {
 
     const { startUrls, minScore, language, extractReviewerName = false } = input;
 
-    const html = await page.content();
-    await Apify.setValue('DETAIL_PAGE', html, { contentType: 'text/html' });
-
+    await setHtmlDebugValue(page, 'DETAIL_PAGE');
     await waitForPageToLoad(page);
 
     const ldElem = await page.$('script[type="application/ld+json"]');
@@ -59,6 +58,7 @@ module.exports.handleDetailPage = async (context, globalContext) => {
         await saveDetailIfComplete(detailPagename);
     } else {
         // Store userReviews extracted directly from detail page only if no reviews are scraped from extra requests.
+        const html = await page.content();
         const reviews = extractPreviewReviews(html, extractReviewerName);
         await Apify.pushData({ ...detail, reviews, ...userResult });
     }

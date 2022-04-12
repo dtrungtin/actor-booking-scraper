@@ -2,7 +2,7 @@ const Apify = require('apify');
 
 const { extractReviews } = require('../extraction/review-page-extraction');
 const { addReviews, removeProcessedReviewUrl } = require('../global-store');
-const { saveDetailIfComplete, validateProxy } = require('../util');
+const { saveDetailIfComplete, validateProxy, setHtmlDebugValue } = require('../util');
 
 const { log } = Apify.utils;
 
@@ -19,10 +19,9 @@ module.exports.handleReviewPage = async (context, globalContext) => {
 
     const { startUrls, extractReviewerName = false } = input;
 
-    const html = await page.content();
-    await Apify.setValue('REVIEW_PAGE', html, { contentType: 'text/html' });
-
+    await setHtmlDebugValue(page, 'REVIEW_PAGE');
     await waitForPageToLoad(page);
+
     await Apify.utils.puppeteer.injectJQuery(page);
 
     // Check if the page was opened through working proxy.
