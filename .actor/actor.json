@@ -19,13 +19,19 @@
                             "address",
                             "rating",
                             "reviews",
-                            "url"                        ],
-                        "unwind": ["organicResults"]  
+                            "url",
+                            "image"
+                        ]
+ 
                     },
                     "display": {
                         "component": "table",
                         "columns": [
                             { 
+                                "label": "",
+                                "format": "image",
+                                "field": "image"
+                            },                            { 
                                 "label": "Name",
                                 "format": "text",
                                 "field": "name"
