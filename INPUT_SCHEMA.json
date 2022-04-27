@@ -359,7 +359,7 @@
             "type": "string",
             "description": "Minimum-maximum price range in min-max or min+ format (such as 100-150, 200-225, 300+, ...)",
             "editor": "textfield",
-            "prefill": "100-150"
+            "prefill": "0-999999"
         },
         "scrapeReviewerName": {
             "title": "Reviewer name",
