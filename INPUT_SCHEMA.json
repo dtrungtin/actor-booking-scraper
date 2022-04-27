@@ -370,8 +370,9 @@
         "proxyConfig": {
             "title": "Proxy Configuration",
             "type": "object",
-            "description": "SHADER proxy group usually works the best if you have access to it.",
+            "description": "Use either automatic Apify proxies or Residentials (or of course your own.",
             "prefill": { "useApifyProxy": true },
+            "default": { "useApifyProxy": true },
             "editor": "proxy",
             "sectionCaption": "Advanced options (proxy configuration, extend output, debug mode)"
         },
