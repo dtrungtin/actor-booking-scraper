@@ -1,5 +1,5 @@
 const Apify = require('apify');
-const { USER_AGENT, MAX_PAGINATION_PAGES } = require('./consts');
+const { USER_AGENT, MAX_PAGINATION_PAGES, REVIEWS_RESULTS_PER_REQUEST } = require('./consts');
 const { validateInput, cleanInput, evalExtendOutputFn } = require('./input');
 const { prepareRequestSources } = require('./start-urls');
 const ErrorSnapshotter = require('./error-snapshotter');
@@ -24,7 +24,7 @@ Apify.main(async () => {
         startUrls,
         sortBy = 'bayesian_review_score',
         maxPages = MAX_PAGINATION_PAGES,
-        maxReviewsPages = MAX_PAGINATION_PAGES,
+        maxReviews = MAX_PAGINATION_PAGES * REVIEWS_RESULTS_PER_REQUEST,
         proxyConfig = { useApifyProxy: true },
         enableAssets = false,
     } = input;
@@ -33,7 +33,7 @@ Apify.main(async () => {
     await errorSnapshotter.initialize(Apify.events);
 
     // Returns the store instance. This instance can be later retreived by calling GlobalStore.summon().
-    await initializeGlobalStore(maxPages, maxReviewsPages);
+    await initializeGlobalStore(maxPages, maxReviews);
 
     const globalContext = {
         input,

@@ -17,14 +17,6 @@
             "maximum": 1000000,
             "prefill": 2
         },
-        "maxReviewsPages": {
-            "title": "Maximum reviews pagination pages",
-            "type": "integer",
-            "description": "Number of reviews pages to be crawled for each detail page. You'll automatically get up to 10 reviews from the detail page without setting this field and going through reviews pagination.",
-            "maximum": 1000000,
-            "prefill": 1,
-            "default": 0
-        },
         "simple": {
             "title": "Extract only basic information (no detail)",
             "type": "boolean",
@@ -357,6 +349,16 @@
             "description": "Minimum-maximum price range in min-max or min+ format (such as 100-150, 200-225, 300+, ...)",
             "editor": "textfield",
             "prefill": "100-150"
+        },
+        "maxReviews": {
+            "title": "Maximum reviews",
+            "type": "integer",
+            "description": "Number of reviews to be scraped for each detail page. You can get up to 10 reviews directly from the detail page without going through reviews pagination. For each separate review page, 25 results will be extracted.",
+            "maximum": 1000000,
+            "prefill": 10,
+            "default": 10,
+            "sectionCaption": "Reviews options (max review pages, reviews output restrictions)"
+
         },
         "scrapeReviewerName": {
             "title": "Reviewer name",
