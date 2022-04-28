@@ -61,11 +61,12 @@ const buildRequestsFromStartUrls = async (startUrls, input) => {
             const sourceUrlList = await downloadListOfUrls({ url: request.requestsFromUrl });
             for (const url of sourceUrlList) {
                 request = { url };
-                if (request.url.indexOf('/hotel/') > -1) {
-                    request.userData = { label: LABELS.DETAIL };
-                }
 
+                const label = request.url.indexOf('/hotel/') > -1 ? LABELS.DETAIL : LABELS.START;
+
+                request.userData = { label };
                 request.url = addUrlParameters(request.url, input);
+
                 requests.push(request);
             }
         } else {
@@ -75,11 +76,13 @@ const buildRequestsFromStartUrls = async (startUrls, input) => {
 
             // TODO: Figure out how to fix this
             const isDetailPage = !request.userData || request.userData.label === LABELS.DETAIL;
-            if (isDetailPage && request.url.indexOf('/hotel/') > -1) {
-                request.userData = { label: LABELS.DETAIL };
-            }
+            const label = isDetailPage && request.url.indexOf('/hotel/') > -1
+                ? LABELS.DETAIL
+                : LABELS.START;
 
+            request.userData = { label };
             request.url = addUrlParameters(request.url, input);
+
             requests.push(request);
         }
     }
