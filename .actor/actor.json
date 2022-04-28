@@ -18,7 +18,7 @@
                             "name",
                             "address",
                             "rating",
-                            "reviews",
+                            "reviewsCount",
                             "url",
                             "image"
                         ]
@@ -49,7 +49,7 @@
                             { 
                                 "label": "Reviews",
                                 "format": "text",
-                                "field": "reviews"
+                                "field": "reviewsCount"
                             },
                             { 
                                 "label": "URL",
