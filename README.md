@@ -192,7 +192,7 @@ Reviews will also be included in a detailed result. You'll get `categoryReviews`
   "stars": 4,
   "price": 184,
   "rating": 9.1,
-  "reviewsCount": 898,
+  "reviews": 898,
   "breakfast": "Continental, Vegetarian, Gluten-free, American, Buffet",
   "checkInFrom": "14:00",
   "checkInTo": "22:00",
@@ -292,7 +292,7 @@ Reviews will also be included in a detailed result. You'll get `categoryReviews`
       "score": 9.5
     }
   ],
-  "reviews": [
+  "userReviews": [
     {
       "title": "Exceptional",
       "score": 10,

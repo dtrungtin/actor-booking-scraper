@@ -57,25 +57,25 @@ module.exports.addReviews = (detailPagename, reviews) => {
     const store = GlobalStore.summon();
 
     const detail = store.state.details[detailPagename];
-    const detailReviews = detail.reviews || [];
+    const detailReviews = detail.userReviews || [];
 
     const updatedReviews = [
         ...detailReviews,
         ...reviews,
     ];
 
-    store.setPath(`details.${detailPagename}.reviews`, updatedReviews);
+    store.setPath(`details.${detailPagename}.userReviews`, updatedReviews);
 };
 
 module.exports.sliceReviews = (detailPagename, reviewsCount) => {
     const store = GlobalStore.summon();
 
     const detail = store.state.details[detailPagename];
-    const detailReviews = detail.reviews || [];
+    const detailReviews = detail.userReviews || [];
 
     const updatedReviews = detailReviews.slice(0, reviewsCount);
 
-    store.setPath(`details.${detailPagename}.reviews`, updatedReviews);
+    store.setPath(`details.${detailPagename}.userReviews`, updatedReviews);
 };
 
 module.exports.setReviewUrlsToProcess = (detailPagename, reviewUrls) => {

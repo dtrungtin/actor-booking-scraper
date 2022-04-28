@@ -63,7 +63,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         stars: starIcons.length || null,
         price,
         rating: aggregateRating ? aggregateRating.ratingValue : null,
-        reviewsCount: aggregateRating ? aggregateRating.reviewCount : null,
+        reviews: aggregateRating ? aggregateRating.reviewCount : null,
         breakfast: bFast ? await getAttribute(bFast, 'textContent') : null,
         checkInFrom,
         checkInTo,

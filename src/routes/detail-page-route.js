@@ -53,7 +53,7 @@ module.exports.handleDetailPage = async (context, globalContext) => {
         const detailPagename = getPagename(url);
         addDetail(detailPagename, detail);
 
-        const { reviewsCount } = detail;
+        const { reviews: reviewsCount } = detail;
         await enqueueAllReviewsPages(context, detailPagename, reviewsCount, language);
 
         await saveDetailIfComplete(detailPagename);
@@ -63,9 +63,9 @@ module.exports.handleDetailPage = async (context, globalContext) => {
         const store = GlobalStore.summon();
 
         const previewReviews = extractPreviewReviews(html, extractReviewerName);
-        const reviews = previewReviews.slice(0, store.state.maxReviews);
+        const userReviews = previewReviews.slice(0, store.state.maxReviews);
 
-        await Apify.pushData({ ...detail, reviews, ...userResult });
+        await Apify.pushData({ ...detail, userReviews, ...userResult });
     }
 };
 
