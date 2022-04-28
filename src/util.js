@@ -9,6 +9,7 @@ const {
     PLACE_URL_NAME_REGEX,
     LOCALIZATION_REGEX,
 } = require('./consts');
+const { sliceReviews } = require('./global-store');
 
 const { log } = Apify.utils;
 
@@ -315,6 +316,8 @@ module.exports.saveDetailIfComplete = async (detailPagename) => {
     const store = GlobalStore.summon();
 
     if (store.state.reviewPagesToProcess[detailPagename].length === 0) {
+        sliceReviews(detailPagename, store.state.maxReviews);
+
         log.info('Extracted all reviews, pushing result to the dataset...', { detailPagename });
         await store.pushPathToDataset(`details.${detailPagename}`);
     }

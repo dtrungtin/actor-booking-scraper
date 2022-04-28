@@ -1,9 +1,22 @@
 const { GlobalStore } = require('apify-global-store');
+const { REVIEWS_ON_DETAIL_PAGE, REVIEWS_RESULTS_PER_REQUEST } = require('./consts');
 
-module.exports.initializeGlobalStore = async (maxPages, maxReviewsPages) => {
+module.exports.initializeGlobalStore = async (maxPages, maxReviews) => {
+    let reviewsRoundedUpToPages = maxReviews;
+
+    while (reviewsRoundedUpToPages % REVIEWS_RESULTS_PER_REQUEST !== 0) {
+        reviewsRoundedUpToPages++;
+    }
+
+    // If we only want to scrape REVIEWS_ON_DETAIL_PAGE reviews from a detail page, we will set maxReviewsPages to 0
+    const maxReviewsPages = maxReviews > REVIEWS_ON_DETAIL_PAGE
+        ? reviewsRoundedUpToPages / REVIEWS_RESULTS_PER_REQUEST
+        : 0;
+
     const store = await GlobalStore.init({
         initialState: {
             remainingPages: maxPages,
+            maxReviews,
             maxReviewsPages,
             details: {},
             reviewPagesToProcess: {},
@@ -42,15 +55,25 @@ module.exports.addDetail = (detailPagename, detail) => {
 
 module.exports.addReviews = (detailPagename, reviews) => {
     const store = GlobalStore.summon();
-    const { details } = store.state;
 
-    const detail = details[detailPagename];
+    const detail = store.state.details[detailPagename];
     const detailReviews = detail.reviews || [];
 
     const updatedReviews = [
         ...detailReviews,
         ...reviews,
     ];
+
+    store.setPath(`details.${detailPagename}.reviews`, updatedReviews);
+};
+
+module.exports.sliceReviews = (detailPagename, reviewsCount) => {
+    const store = GlobalStore.summon();
+
+    const detail = store.state.details[detailPagename];
+    const detailReviews = detail.reviews || [];
+
+    const updatedReviews = detailReviews.slice(0, reviewsCount);
 
     store.setPath(`details.${detailPagename}.reviews`, updatedReviews);
 };
