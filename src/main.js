@@ -9,7 +9,7 @@ const { initializeGlobalStore } = require('./global-store');
 const { log } = Apify.utils;
 
 Apify.main(async () => {
-    const input = await Apify.getValue('INPUT');
+    const input = await Apify.getInput();
 
     validateInput(input);
     cleanInput(input);
