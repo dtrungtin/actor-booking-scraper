@@ -24,7 +24,7 @@ module.exports.handleDetailPage = async (context, globalContext) => {
     } = context;
     const { input, extendOutputFunction } = globalContext;
 
-    const { startUrls, minScore, language, extractReviewerName = false } = input;
+    const { startUrls, minScore, language, scrapeReviewerName = false } = input;
 
     await setHtmlDebugValue(page, 'DETAIL_PAGE');
     await waitForPageToLoad(page);
@@ -62,7 +62,7 @@ module.exports.handleDetailPage = async (context, globalContext) => {
         const html = await page.content();
         const store = GlobalStore.summon();
 
-        const previewReviews = extractPreviewReviews(html, extractReviewerName);
+        const previewReviews = extractPreviewReviews(html, scrapeReviewerName);
         const userReviews = previewReviews.slice(0, store.state.maxReviews);
 
         await Apify.pushData({ ...detail, userReviews, ...userResult });

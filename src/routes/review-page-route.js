@@ -17,7 +17,7 @@ module.exports.handleReviewPage = async (context, globalContext) => {
     } = context;
     const { input } = globalContext;
 
-    const { startUrls, extractReviewerName = false } = input;
+    const { startUrls, scrapeReviewerName = false } = input;
 
     await setHtmlDebugValue(page, 'REVIEW_PAGE');
     await waitForPageToLoad(page);
@@ -28,7 +28,7 @@ module.exports.handleReviewPage = async (context, globalContext) => {
     validateProxy(page, session, startUrls, 'label');
 
     let reviews = await extractReviews(page);
-    if (!extractReviewerName) {
+    if (!scrapeReviewerName) {
         reviews = reviews.map((review) => {
             const reviewWithoutGuestName = { ...review };
             delete reviewWithoutGuestName.guestName;
