@@ -24,56 +24,123 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         region: addressRegion,
     };
 
-    const html = await page.content();
-    const name = await page.$('#hp_hotel_name');
-    const nameText = name ? (await getAttribute(name, 'textContent')).split('\n') : null;
-    const description = await page.$('#property_description_content');
-    const descriptionText = description ? await getAttribute(description, 'textContent') : null;
-    const hType = await page.$('.hp__hotel-type-badge');
-    const pType = await page.$('.bh-property-type');
-    const bFast = await page.$('.ph-item-copy-breakfast-option');
     const checkInFrom = await page.$$eval('#checkin_policy [data-from]',
         (el) => (el.length > 0 ? el[0].getAttribute('data-from') : null));
     const checkInTo = await page.$$eval('#checkin_policy [data-until]',
         (el) => (el.length > 0 ? el[0].getAttribute('data-until') : null));
-    const starIcons = await page.$$('.hp__hotel_ratings__stars svg');
-    const loc = hasMap ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/) : null;
+
+    const rooms = await extractRoomsInfo(page, input);
+
+    return {
+        order: userData.order,
+        url: addUrlParameters(page.url().split('?')[0], input),
+        name: await extractName(page),
+        type: await extractType(page),
+        description: await extractDescription(page),
+        stars: (await page.$$('.hp__hotel_ratings__stars svg')).length > 0 || null,
+        price: rooms.length > 0 ? rooms[0].price : null,
+        rating: await extractRating(page, aggregateRating),
+        reviews: await extractReviewsCount(page, aggregateRating),
+        breakfast: await extractBreakfast(page),
+        checkInFrom,
+        checkInTo,
+        location: extractLocation(hasMap),
+        address,
+        image: await extractImage(page),
+        rooms,
+        images: await extractImages(page),
+        categoryReviews: await extractCategoryReviews(page),
+    };
+};
+
+const extractName = async (page) => {
+    const name = await page.$('#hp_hotel_name');
+    const nameText = name ? (await getAttribute(name, 'textContent')).split('\n') : null;
+
+    return nameText ? nameText[nameText.length - 1].trim() : null;
+};
+
+const extractDescription = async (page) => {
+    const description = await page.$('#property_description_content');
+    const descriptionText = description ? await getAttribute(description, 'textContent') : null;
+
+    return descriptionText;
+};
+
+const extractType = async (page) => {
+    const hType = await page.$('.hp__hotel-type-badge');
+    const pType = await page.$('.bh-property-type');
+
+    const homeType = hType ? await getAttribute(hType, 'textContent') : null;
+    const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
+
+    return homeType || propertyType;
+};
+
+const extractBreakfast = async (page) => {
+    const breakfast = await page.$('.ph-item-copy-breakfast-option');
+    const breakfastText = breakfast ? await getAttribute(breakfast, 'textContent') : null;
+
+    return breakfastText;
+};
+
+const extractLocation = (hasMap) => {
+    const locationMatch = hasMap ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/) : null;
+
+    const location = locationMatch && locationMatch.length > 2
+        ? {
+            lat: locationMatch[1],
+            lng: locationMatch[2],
+        }
+        : null;
+
+    return location;
+};
+
+const extractImage = async (page) => {
+    const html = await page.content();
+
     const img1El = await page.$('.slick-track img');
     const img1 = img1El ? await getAttribute(img1El, 'src') : null;
     const img2El = await page.$('#photo_wrapper img');
     const img2 = img2El ? await getAttribute(img2El, 'src') : null;
     const img3 = html.match(/large_url: '(.+)'/);
-    const rooms = await extractRoomsInfo(page, input);
-    const price = rooms.length > 0 ? rooms[0].price : null;
+
+    const image = img1 || img2 || (img3 ? img3[1] : null);
+
+    return image;
+};
+
+const extractImages = async (page) => {
     const images = await page.evaluate(() => {
         return window.booking.env.hotelPhotos.map((photo) => photo.large_url);
     });
 
-    const homeType = hType ? await getAttribute(hType, 'textContent') : null;
-    const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
+    return images;
+};
 
-    const categoryReviews = await extractCategoryReviews(page);
+const extractRating = async (page, aggregateRating) => {
+    let rating = aggregateRating ? aggregateRating.ratingValue : null;
 
-    return {
-        order: userData.order,
-        url: addUrlParameters(page.url().split('?')[0], input),
-        name: nameText ? nameText[nameText.length - 1].trim() : null,
-        type: homeType || propertyType,
-        description: descriptionText || null,
-        stars: starIcons.length || null,
-        price,
-        rating: aggregateRating ? aggregateRating.ratingValue : null,
-        reviews: aggregateRating ? aggregateRating.reviewCount : null,
-        breakfast: bFast ? await getAttribute(bFast, 'textContent') : null,
-        checkInFrom,
-        checkInTo,
-        location: loc && loc.length > 2 ? { lat: loc[1], lng: loc[2] } : null,
-        address,
-        image: img1 || img2 || (img3 ? img3[1] : null),
-        rooms,
-        images,
-        categoryReviews,
-    };
+    if (!rating) {
+        const externalRating = await page.$('[data-testid="external-review-score-component"] span');
+        const externalRatingText = externalRating ? await getAttribute(externalRating, 'textContent') : null;
+        rating = externalRatingText ? Number(externalRatingText.replaceAll(',', '.').replace(/[^\d.]/g, '')) : null;
+    }
+
+    return rating;
+};
+
+const extractReviewsCount = async (page, aggregateRating) => {
+    let reviews = aggregateRating ? aggregateRating.reviewCount : null;
+
+    if (!reviews) {
+        const guestReviews = await page.$('.hp_nav_bar_item [rel="reviews"] span');
+        const guestReviewsText = guestReviews ? await getAttribute(guestReviews, 'textContent') : '0';
+        reviews = Number(guestReviewsText.replace(/[^\d]/g, ''));
+    }
+
+    return reviews;
 };
 
 const extractCategoryReviews = async (page) => {
@@ -117,7 +184,7 @@ const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
  * @param {string} html
  * @param {boolean} extractReviewerName
  */
-module.exports.extractPreviewReviews = (html, extractReviewerName) => {
+module.exports.extractPreviewReviews = (html, scrapeReviewerName) => {
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
     const exportedVarsMatch = matches ? matches[1] : '';
@@ -136,7 +203,7 @@ module.exports.extractPreviewReviews = (html, extractReviewerName) => {
     const { fe_featured_reviews: featuredReviews } = exportedVars;
     const parsedReviews = featuredReviews ? parsePreviewReviews(featuredReviews) : [];
 
-    if (!extractReviewerName) {
+    if (!scrapeReviewerName) {
         parsedReviews.forEach((review) => delete review.guestName);
     }
 
