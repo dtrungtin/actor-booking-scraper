@@ -43,7 +43,7 @@ The input for the scraper is a JSON object with the following properties:
     "useFilters": USE_CRITERIA_FILTERING,
     "minScore": MINIMUM_HOTEL_RATING,
     "maxPages": MAXIMUM_PAGINATION_PAGES,
-    "maxReviewsPages": MAXIMUM_REVIEWS_PAGINATION_PAGES,
+    "maxReviews": MAXIMUM_REVIEWS,
     "concurrency": MAXIMUM_CONCURRENT_PAGES,
     "checkIn": CHECK_IN_DATE,
     "checkOut": CHECK_OUT_DATE,
@@ -67,7 +67,7 @@ The input for the scraper is a JSON object with the following properties:
 * `useFilters` sets if the crawler should utilize criteria filters to overcome the limit for 1000 results.
 * `minScore` specifies the minimum allowed rating of the hotel to be included in results.
 * `maxPages` sets maximum number of pagination pages to be crawled.
-* `maxReviewsPages` sets maximum number of reviews pagination pages to be crawled. It works only with `simple` field set to `false`. You'll get up to 10 reviews even with setting max reviews to 0 as they can be scraped directly from the detail page without any extra overhead. When set on value > 0, the reviews from the detail page won't be scraped and reviews pagination pages will be crawled instead.
+* `maxReviews` sets maximum number of reviews to be extracted. It works only with `simple` field set to `false`. You'll get up to 10 reviews from a detail page without any extra overhead. When set on value > 10, preview reviews from the detail page won't be scraped and reviews pagination pages will be crawled instead.
 * `checkIn` check-in date in the yyyy-mm-dd format.
 * `checkOut` check-out date in the yyyy-mm-dd format.
 * `rooms` number of rooms to be set for the search.
@@ -180,7 +180,7 @@ If `checkIn` and `checkOut` INPUT attributes are not provided, simple output is 
 
 Otherwise the output will be much more comprehensive, especially the `rooms` array. When `checkIn` and `checkOut` INPUT attributes are set, `rooms` array will contain more detailed info such as price or room features. These fields will be omitted without `checkIn` and `checkOut` specified.
 
-Reviews will also be included in a detailed result. You'll get `categoryReviews` with review score for the individual criteria such as location, staff or value for money. Apart from `categoryReviews`, the result will also contain `reviews` array holding structured reviews directly from the users. You'll always find at least a few reviews from the detail page preview in there (10 reviews at the most). If you'd like to scrape more reviews, you'll need to set `maxReviewsPages` accordingly. For `maxReviewsPages = 1`, one extra request for reviews pagination will be enqueued. Each review page offers 25 reviews as the maximum. Depending on the `extractReviewerName` input field, the `guestName` field will be provided or excluded.
+Reviews will also be included in a detailed result. You'll get `categoryReviews` with review score for the individual criteria such as location, staff or value for money. Apart from `categoryReviews`, the result will also contain `userReviews` array holding structured reviews directly from the users. When a detail page contains preview reviews (10 at the most), they can be extracted without crawling separate review pages. If you'd like to scrape more than 10 reviews, you'll need to set `maxReviews` accordingly. For `maxReviews = 25`, one extra request for reviews pagination will be enqueued. Each review page offers 25 reviews as the maximum. Depending on the `scrapeReviewerName` input field value, the `guestName` field will be provided or excluded.
 
 ```json
 {
