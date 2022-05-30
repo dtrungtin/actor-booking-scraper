@@ -37,7 +37,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         name: await extractName(page),
         type: await extractType(page),
         description: await extractDescription(page),
-        stars: (await page.$$('.hp__hotel_ratings__stars svg')).length > 0 || null,
+        stars: (await page.$$('.hp__hotel_ratings__stars svg')).length || null,
         price: rooms.length > 0 ? rooms[0].price : null,
         rating: await extractRating(page, aggregateRating),
         reviews: await extractReviewsCount(page, aggregateRating),
