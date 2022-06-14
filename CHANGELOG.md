@@ -1,3 +1,7 @@
+## 2022-06-14
+
+- Fixed `image` extraction from listing page (for `simple: true` scrape parameter)
+
 ## 2022-04-03
 
 - Added user reviews extraction from both detail page and reviews pagination pages
