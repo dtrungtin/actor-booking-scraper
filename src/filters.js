@@ -15,7 +15,7 @@ module.exports.shouldUseFilters = (totalResults, useFilters) => {
     return useFilters && totalResults > maxResults && requiresPagesOverLimit;
 };
 
-module.exports.enqueueFilteredPages = async ({ page, request, requestQueue }) => {
+module.exports.enqueueFilteredPages = async ({ page, request, requestQueue }, globalContext) => {
     log.info('enqueuing filtered pages...');
 
     const attribute = 'value';
@@ -24,10 +24,10 @@ module.exports.enqueueFilteredPages = async ({ page, request, requestQueue }) =>
     const extractionInfo = { page, unchecked, attribute };
     const urlInfo = { baseUrl: request.url, label: LABELS.START };
 
-    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue);
+    await enqueueFilterLinks(extractionInfo, urlInfo, requestQueue, globalContext);
 };
 
-const enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue) => {
+const enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue, globalContext) => {
     const { page, unchecked, attribute } = extractionInfo;
     const { label, baseUrl } = urlInfo;
 
@@ -37,7 +37,7 @@ const enqueueFilterLinks = async (extractionInfo, urlInfo, requestQueue) => {
     const uncheckedFilters = await getFilterNameValues(uncheckedElements, attribute);
 
     const validFilters = getValidFilters(uncheckedFilters);
-    const filtersToEnqueue = getFiltersToEnqueue(validFilters, url);
+    const filtersToEnqueue = getFiltersToEnqueue(validFilters, url, globalContext);
     const newFiltersCount = filtersToEnqueue.length;
 
     if (newFiltersCount) {
@@ -73,7 +73,8 @@ const getValidFilters = (uncheckedFilters) => {
     return validFilters;
 };
 
-const getFiltersToEnqueue = (filters, url) => {
+const getFiltersToEnqueue = (filters, url, globalContext) => {
+    const { input } = globalContext;
     const filtersToEnqueue = [];
 
     Object.keys(filters).forEach((name) => {
@@ -84,9 +85,21 @@ const getFiltersToEnqueue = (filters, url) => {
 
         const isFilterEnqueued = isFilterAlreadyEnqueued(name, url);
 
-        if (!isFilterEnqueued) {
-            filtersToEnqueue.push({ name, values });
+        if (isFilterEnqueued) {
+            return;
         }
+
+        if (input.propertyType && input.propertyType !== 'none' && name === 'ht_id') {
+            // skip property type filter if the scrape already filters by that
+            return;
+        }
+
+        if (input.minMaxPrice && input.minMaxPrice !== 'none' && name === 'pri') {
+            // skip price range filters if the scrape already filters by price
+            return;
+        }
+
+        filtersToEnqueue.push({ name, values });
     });
 
     return filtersToEnqueue;

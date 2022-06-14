@@ -67,7 +67,7 @@ const handleStartPage = async ({ page, request, requestQueue }, globalContext) =
      * at the beginning.
      */
     if (usingFilters) {
-        await enqueueFilteredPages({ page, request, requestQueue });
+        await enqueueFilteredPages({ page, request, requestQueue }, globalContext);
     }
 
     /**
