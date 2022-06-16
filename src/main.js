@@ -1,6 +1,6 @@
 const Apify = require('apify');
 const { USER_AGENT, MAX_PAGINATION_PAGES, REVIEWS_RESULTS_PER_REQUEST } = require('./consts');
-const { validateInput, cleanInput, evalExtendOutputFn } = require('./input');
+const { validateInput, parseInput, evalExtendOutputFn } = require('./input');
 const { prepareRequestSources } = require('./start-urls');
 const ErrorSnapshotter = require('./error-snapshotter');
 const handlePageFunctionExtended = require('./handle-page-function');
@@ -9,10 +9,10 @@ const { initializeGlobalStore } = require('./global-store');
 const { log } = Apify.utils;
 
 Apify.main(async () => {
-    const input = await Apify.getInput();
+    let input = await Apify.getInput();
 
+    input = parseInput(input);
     validateInput(input);
-    cleanInput(input);
 
     if (input.debug) {
         log.setLevel(log.LEVELS.DEBUG);
