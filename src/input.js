@@ -10,7 +10,7 @@ const { log } = Apify.utils;
  * @param {Object} input - The Actor input data object.
  */
 module.exports.validateInput = (input) => {
-    const { search, startUrls, proxyConfig, propertyType, useFilters, minMaxPrice, minScore } = input;
+    const { search, startUrls, proxyConfig, propertyType, minScore } = input;
 
     if (!search && !startUrls) {
         throw new Error('WRONG INPUT: Missing "search" or "startUrls" attribute in INPUT!');
@@ -26,16 +26,9 @@ module.exports.validateInput = (input) => {
             throw new Error('WRONG INPUT: This actor cannot be used without Apify proxy or custom proxies.');
         }
     }
-    if (useFilters && propertyType && propertyType !== 'none') {
-        throw new Error('WRONG INPUT: Property type and filters cannot be used at the same time.');
-    }
-
-    if (useFilters && minMaxPrice && minMaxPrice !== 'none') {
-        throw new Error('WRONG INPUT: Price range and filters cannot be used at the same time.');
-    }
 
     if (startUrls && !Array.isArray(startUrls)) {
-        throw new Error('WRONG INPUT: startUrls must an array!');
+        throw new Error('WRONG INPUT: startUrls must be an array!');
     }
 
     if (propertyType && propertyType !== 'none' && !PROPERTY_TYPE_IDS[propertyType]) {
@@ -68,11 +61,21 @@ module.exports.validateInput = (input) => {
     }
 };
 
-module.exports.cleanInput = (input) => {
+module.exports.parseInput = (input) => {
+    const { currency = 'USD', language = 'en-us' } = input;
+    let { minScore } = input;
+
     // Input Schema doesn't support floats yet
-    if (input.minScore) {
-        input.minScore = parseFloat(input.minScore);
+    if ('minScore' in input) {
+        minScore = parseFloat(minScore);
     }
+
+    return {
+        ...input,
+        currency,
+        language,
+        minScore,
+    };
 };
 
 module.exports.evalExtendOutputFn = (input) => {

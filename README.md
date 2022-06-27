@@ -314,7 +314,7 @@ Reviews will also be included in a detailed result. You'll get `categoryReviews`
 ## Notes
 * The actor will not work without a proxy. If you try running the actor without a proxy, it will fail with a message stating exactly that. There could be a slight difference in price depending on the type of proxy you use.
 
-* Booking.com will only display a maximum of 1,000 results; if you need to circumvent this limitation, you can utilize the `useFilters` INPUT attribute. However, using any limiting filters in start URLs will not be possible because the scraper will override those.
+* Booking.com will only display a maximum of 1,000 results; if you need to circumvent this limitation, you can utilize the `useFilters` INPUT attribute.
 
 * If you need to get detailed data about specific rooms, the crawler needs to be started with `checkIn` and `checkOut` INPUT attributes (Booking.com only shows complete room info for specific dates).
 
