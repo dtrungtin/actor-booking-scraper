@@ -1,3 +1,7 @@
+## 2022-06-14
+
+- Added the possibility to combine `useFilters` (circumventing Booking's limit of 1000 results) with scrape filters on property type (hotels, apartments, etc.) or price range
+
 ## 2022-04-03
 
 - Added user reviews extraction from both detail page and reviews pagination pages
