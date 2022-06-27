@@ -61,11 +61,21 @@ module.exports.validateInput = (input) => {
     }
 };
 
-module.exports.cleanInput = (input) => {
+module.exports.parseInput = (input) => {
+    const { currency = 'USD', language = 'en-us' } = input;
+    let { minScore } = input;
+
     // Input Schema doesn't support floats yet
-    if (input.minScore) {
-        input.minScore = parseFloat(input.minScore);
+    if ('minScore' in input) {
+        minScore = parseFloat(minScore);
     }
+
+    return {
+        ...input,
+        currency,
+        language,
+        minScore,
+    };
 };
 
 module.exports.evalExtendOutputFn = (input) => {
