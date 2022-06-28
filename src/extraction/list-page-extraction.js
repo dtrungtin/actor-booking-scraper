@@ -103,7 +103,7 @@ module.exports.listPageFunction = (input) => {
                         : [jThis.find('[data-testid="rating-stars"] span').length];
                     const starsCount = stars ? parseInt(stars[0], 10) : null;
 
-                    const image = jThis.find('.sr_item_photo_link.sr_hotel_preview_track').attr('style');
+                    const image = jThis.find('[data-testid="image"]').attr('src');
                     const hotelLink = jThis.find('.hotel_name_link').attr('href');
 
                     const nightsPersons = jThis.find('[data-testid="price-for-x-nights"]').text().trim();

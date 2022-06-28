@@ -1,5 +1,6 @@
-## 2022-06-14
+## 2022-06-27
 
+- Fixed `image` extraction from listing page (for `simple: true` scrape parameter)
 - Added the possibility to combine `useFilters` (circumventing Booking's limit of 1000 results) with scrape filters on property type (hotels, apartments, etc.) or price range
 
 ## 2022-04-03
