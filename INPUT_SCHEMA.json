@@ -15,6 +15,7 @@
             "type": "integer",
             "description": "Number of pagination pages to be crawled",
             "maximum": 1000000,
+            "minimum": 1,
             "prefill": 2
         },
         "simple": {
