@@ -292,6 +292,10 @@ const extractDetailedRoomsInfo = () => {
                     }
                 }
             }
+
+            let roomAmount = row.find('.hprt-table-room-select');
+            let amount = roomAmount.eq(0).find('select option:last-child').val();
+
         }
 
         // Extract data for each room.
