@@ -271,6 +271,7 @@ const extractDetailedRoomsInfo = () => {
     for (let i = 0; i < rows.length; i++) {
         const row = rows.eq(i);
         const roomRow = row.find('.hprt-table-cell-roomtype');
+        let availableRooms = 0;
         if (roomRow.length > 0) {
             roomType = row.find('.hprt-roomtype-icon-link');
             const bedType = row.find('.hprt-roomtype-bed');
@@ -294,7 +295,7 @@ const extractDetailedRoomsInfo = () => {
             }
 
             let roomAmount = row.find('.hprt-table-room-select');
-            let amount = roomAmount.eq(0).find('select option:last-child').val();
+            availableRooms = roomAmount.eq(0).find('select option:last-child').val();
 
         }
 
@@ -314,6 +315,7 @@ const extractDetailedRoomsInfo = () => {
         const taxAndFee = taxAndFeeText.match(/\d+/);
 
         const room = { available: true };
+        room.availableRooms = availableRooms;
         if (roomType) {
             room.roomType = roomType.text().trim();
         }
