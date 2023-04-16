@@ -1,7 +1,7 @@
-const vm = require('vm');
-const Puppeteer = require('puppeteer'); // eslint-disable-line
-const { getAttribute, addUrlParameters } = require('../util');
-const { EXPORTED_VARS_REGEX } = require('../consts');
+const vm = require("vm");
+const Puppeteer = require("puppeteer"); // eslint-disable-line
+const { getAttribute, addUrlParameters } = require("../util");
+const { EXPORTED_VARS_REGEX } = require("../consts");
 
 /**
  * Extracts information from the detail page.
@@ -11,7 +11,13 @@ const { EXPORTED_VARS_REGEX } = require('../consts');
  */
 module.exports.extractDetail = async (page, ld, input, userData) => {
     const {
-        address: { streetAddress, postalCode, addressLocality, addressCountry, addressRegion },
+        address: {
+            streetAddress,
+            postalCode,
+            addressLocality,
+            addressCountry,
+            addressRegion,
+        },
         hasMap,
         aggregateRating,
     } = ld;
@@ -24,20 +30,23 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         region: addressRegion,
     };
 
-    const checkInFrom = await page.$$eval('#checkin_policy [data-from]',
-        (el) => (el.length > 0 ? el[0].getAttribute('data-from') : null));
-    const checkInTo = await page.$$eval('#checkin_policy [data-until]',
-        (el) => (el.length > 0 ? el[0].getAttribute('data-until') : null));
+    const checkInFrom = await page.$$eval("#checkin_policy [data-from]", (el) =>
+        el.length > 0 ? el[0].getAttribute("data-from") : null
+    );
+    const checkInTo = await page.$$eval("#checkin_policy [data-until]", (el) =>
+        el.length > 0 ? el[0].getAttribute("data-until") : null
+    );
 
     const rooms = await extractRoomsInfo(page, input);
 
     return {
         order: userData.order,
-        url: addUrlParameters(page.url().split('?')[0], input),
+        url: addUrlParameters(page.url().split("?")[0], input),
         name: await extractName(page),
+        hotel_id: await extractHotelId(page),
         type: await extractType(page),
         description: await extractDescription(page),
-        stars: (await page.$$('.hp__hotel_ratings__stars svg')).length || null,
+        stars: (await page.$$(".hp__hotel_ratings__stars svg")).length || null,
         price: rooms.length > 0 ? rooms[0].price : null,
         rating: await extractRating(page, aggregateRating),
         reviews: await extractReviewsCount(page, aggregateRating),
@@ -54,45 +63,63 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
 };
 
 const extractName = async (page) => {
-    const name = await page.$('#hp_hotel_name');
-    const nameText = name ? (await getAttribute(name, 'textContent')).split('\n') : null;
+    const name = await page.$("#hp_hotel_name");
+    const nameText = name
+        ? (await getAttribute(name, "textContent")).split("\n")
+        : null;
 
     return nameText ? nameText[nameText.length - 1].trim() : null;
 };
 
+const extractHotelId = async (page) => {
+    const btnHeart = await page.$eval("#wl--wl_entrypoint_hp_head", (ele) =>
+        ele.getAttribute("data-hotel-id")
+    );
+    return btnHeart;
+};
+
 const extractDescription = async (page) => {
-    const description = await page.$('#property_description_content');
-    const descriptionText = description ? await getAttribute(description, 'textContent') : null;
+    const description = await page.$("#property_description_content");
+    const descriptionText = description
+        ? await getAttribute(description, "textContent")
+        : null;
 
     return descriptionText;
 };
 
 const extractType = async (page) => {
-    const hType = await page.$('.hp__hotel-type-badge');
-    const pType = await page.$('.bh-property-type');
+    const hType = await page.$(".hp__hotel-type-badge");
+    const pType = await page.$(".bh-property-type");
 
-    const homeType = hType ? await getAttribute(hType, 'textContent') : null;
-    const propertyType = pType ? await getAttribute(pType, 'textContent') : null;
+    const homeType = hType ? await getAttribute(hType, "textContent") : null;
+    const propertyType = pType
+        ? await getAttribute(pType, "textContent")
+        : null;
 
     return homeType || propertyType;
 };
 
 const extractBreakfast = async (page) => {
-    const breakfast = await page.$('.ph-item-copy-breakfast-option');
-    const breakfastText = breakfast ? await getAttribute(breakfast, 'textContent') : null;
+    const breakfast = await page.$(".ph-item-copy-breakfast-option");
+    const breakfastText = breakfast
+        ? await getAttribute(breakfast, "textContent")
+        : null;
 
     return breakfastText;
 };
 
 const extractLocation = (hasMap) => {
-    const locationMatch = hasMap ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/) : null;
-
-    const location = locationMatch && locationMatch.length > 2
-        ? {
-            lat: locationMatch[1],
-            lng: locationMatch[2],
-        }
+    const locationMatch = hasMap
+        ? hasMap.match(/%7c(-*\d+\.\d+),(-*\d+\.\d+)/)
         : null;
+
+    const location =
+        locationMatch && locationMatch.length > 2
+            ? {
+                  lat: locationMatch[1],
+                  lng: locationMatch[2],
+              }
+            : null;
 
     return location;
 };
@@ -100,10 +127,10 @@ const extractLocation = (hasMap) => {
 const extractImage = async (page) => {
     const html = await page.content();
 
-    const img1El = await page.$('.slick-track img');
-    const img1 = img1El ? await getAttribute(img1El, 'src') : null;
-    const img2El = await page.$('#photo_wrapper img');
-    const img2 = img2El ? await getAttribute(img2El, 'src') : null;
+    const img1El = await page.$(".slick-track img");
+    const img1 = img1El ? await getAttribute(img1El, "src") : null;
+    const img2El = await page.$("#photo_wrapper img");
+    const img2 = img2El ? await getAttribute(img2El, "src") : null;
     const img3 = html.match(/large_url: '(.+)'/);
 
     const image = img1 || img2 || (img3 ? img3[1] : null);
@@ -123,9 +150,17 @@ const extractRating = async (page, aggregateRating) => {
     let rating = aggregateRating ? aggregateRating.ratingValue : null;
 
     if (!rating) {
-        const externalRating = await page.$('[data-testid="external-review-score-component"] span');
-        const externalRatingText = externalRating ? await getAttribute(externalRating, 'textContent') : null;
-        rating = externalRatingText ? Number(externalRatingText.replaceAll(',', '.').replace(/[^\d.]/g, '')) : null;
+        const externalRating = await page.$(
+            '[data-testid="external-review-score-component"] span'
+        );
+        const externalRatingText = externalRating
+            ? await getAttribute(externalRating, "textContent")
+            : null;
+        rating = externalRatingText
+            ? Number(
+                  externalRatingText.replaceAll(",", ".").replace(/[^\d.]/g, "")
+              )
+            : null;
     }
 
     return rating;
@@ -135,9 +170,13 @@ const extractReviewsCount = async (page, aggregateRating) => {
     let reviews = aggregateRating ? aggregateRating.reviewCount : null;
 
     if (!reviews) {
-        const guestReviews = await page.$('.hp_nav_bar_item [rel="reviews"] span');
-        const guestReviewsText = guestReviews ? await getAttribute(guestReviews, 'textContent') : '0';
-        reviews = Number(guestReviewsText.replace(/[^\d]/g, ''));
+        const guestReviews = await page.$(
+            '.hp_nav_bar_item [rel="reviews"] span'
+        );
+        const guestReviewsText = guestReviews
+            ? await getAttribute(guestReviews, "textContent")
+            : "0";
+        reviews = Number(guestReviewsText.replace(/[^\d]/g, ""));
     }
 
     return reviews;
@@ -145,18 +184,23 @@ const extractReviewsCount = async (page, aggregateRating) => {
 
 const extractCategoryReviews = async (page) => {
     const categoryReviews = await page.evaluate(() => {
-        const CATEGORY_REVIEWS_SELECTOR = '.reviews-snippet-sidebar .review_list_score_container .v2_review-scores__wrapper li .c-score-bar';
-        const reviewElements = document.querySelectorAll(CATEGORY_REVIEWS_SELECTOR);
+        const CATEGORY_REVIEWS_SELECTOR =
+            ".reviews-snippet-sidebar .review_list_score_container .v2_review-scores__wrapper li .c-score-bar";
+        const reviewElements = document.querySelectorAll(
+            CATEGORY_REVIEWS_SELECTOR
+        );
 
         const reviews = [];
 
         reviewElements.forEach((el) => {
-            const titleEl = el.querySelector('.c-score-bar__title');
-            const scoreEl = el.querySelector('.c-score-bar__score');
+            const titleEl = el.querySelector(".c-score-bar__title");
+            const scoreEl = el.querySelector(".c-score-bar__score");
 
             const title = titleEl ? titleEl.textContent.trim() : null;
             const scoreText = scoreEl ? scoreEl.textContent.trim() : null;
-            const score = scoreText ? parseFloat(scoreText.replaceAll(',', '.')) : null;
+            const score = scoreText
+                ? parseFloat(scoreText.replaceAll(",", "."))
+                : null;
 
             if (title && score) {
                 reviews.push({ title, score });
@@ -187,21 +231,23 @@ const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
 module.exports.extractPreviewReviews = (html, scrapeReviewerName) => {
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
     const matches = EXPORTED_VARS_REGEX.exec(html);
-    const exportedVarsMatch = matches ? matches[1] : '';
+    const exportedVarsMatch = matches ? matches[1] : "";
 
     const context = { exportedVars: {} };
     vm.createContext(context);
 
     const jsonParseCode = exportedVarsMatch
-        .replace(/((\\r)?\\n)|(\\r)/gi, ' ') // replace newline characters with whitespaces
-        .replace(/( )+/g, ' '); // replace multiple whitespaces with 1 whitespace;
+        .replace(/((\\r)?\\n)|(\\r)/gi, " ") // replace newline characters with whitespaces
+        .replace(/( )+/g, " "); // replace multiple whitespaces with 1 whitespace;
 
     vm.runInContext(jsonParseCode, context);
 
     const { exportedVars } = context;
 
     const { fe_featured_reviews: featuredReviews } = exportedVars;
-    const parsedReviews = featuredReviews ? parsePreviewReviews(featuredReviews) : [];
+    const parsedReviews = featuredReviews
+        ? parsePreviewReviews(featuredReviews)
+        : [];
 
     if (!scrapeReviewerName) {
         parsedReviews.forEach((review) => delete review.guestName);
@@ -211,32 +257,47 @@ module.exports.extractPreviewReviews = (html, scrapeReviewerName) => {
 };
 
 const parsePreviewReviews = (reviews) => {
-    const parsedReviews = reviews.map((review) => {
-        const {
-            b_title: title,
-            b_average_score_out_of_10: score,
-            b_hotel_positive: positive,
-            b_hotel_negative: negative,
-            b_guest_name: guestName,
-            b_completed_date: date,
-            b_language: language,
-            b_country_name: country,
-            b_guest_countrycode: countryCode,
-            b_user_uploaded_photos: uploadedPhotos,
-        } = review;
+    const parsedReviews = reviews
+        .map((review) => {
+            const {
+                b_title: title,
+                b_average_score_out_of_10: score,
+                b_hotel_positive: positive,
+                b_hotel_negative: negative,
+                b_guest_name: guestName,
+                b_completed_date: date,
+                b_language: language,
+                b_country_name: country,
+                b_guest_countrycode: countryCode,
+                b_user_uploaded_photos: uploadedPhotos,
+            } = review;
 
-        const photos = uploadedPhotos ? uploadedPhotos.map((photo) => photo.max1280x900) : [];
+            const photos = uploadedPhotos
+                ? uploadedPhotos.map((photo) => photo.max1280x900)
+                : [];
 
-        return { title, score, positive, negative, guestName, date, language, country, countryCode, photos };
-    }).map((review) => {
-        const normalizedReview = { ...review };
+            return {
+                title,
+                score,
+                positive,
+                negative,
+                guestName,
+                date,
+                language,
+                country,
+                countryCode,
+                photos,
+            };
+        })
+        .map((review) => {
+            const normalizedReview = { ...review };
 
-        Object.keys(normalizedReview).forEach((key) => {
-            normalizedReview[key] = normalizedReview[key] || null;
+            Object.keys(normalizedReview).forEach((key) => {
+                normalizedReview[key] = normalizedReview[key] || null;
+            });
+
+            return normalizedReview;
         });
-
-        return normalizedReview;
-    });
 
     return parsedReviews;
 };
@@ -258,34 +319,39 @@ const extractDetailedRoomsInfo = () => {
             return null;
         }
 
-        const occ1 = row.find('.hprt-occupancy-occupancy-info .invisible_spoken');
-        const occ2 = row.find('.hprt-occupancy-occupancy-info').attr('data-title');
-        const occ3 = row.find('.hprt-occupancy-occupancy-info').text();
+        const occ1 = row.find(
+            ".hprt-occupancy-occupancy-info .invisible_spoken"
+        );
+        const occ2 = row
+            .find(".hprt-occupancy-occupancy-info")
+            .attr("data-title");
+        const occ3 = row.find(".hprt-occupancy-occupancy-info").text();
 
         return occ1.length > 0 ? occ1.text() : occ2 || occ3;
     };
 
     // Iterate all table rows.
-    const rows = $('.hprt-table > tbody > tr:not(.hprt-cheapest-block-row)');
+    const rows = $(".hprt-table > tbody > tr:not(.hprt-cheapest-block-row)");
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows.eq(i);
-        const roomRow = row.find('.hprt-table-cell-roomtype');
+        const roomRow = row.find(".hprt-table-cell-roomtype");
         let availableRooms = 0;
+        const roomId = dataBlockId.split("_")?.[0] ?? null;
         if (roomRow.length > 0) {
-            roomType = row.find('.hprt-roomtype-icon-link');
-            const bedType = row.find('.hprt-roomtype-bed');
+            roomType = row.find(".hprt-roomtype-icon-link");
+            const bedType = row.find(".hprt-roomtype-bed");
             bedText = bedType.length > 0 ? bedType.text() : null;
 
             // Iterate and parse all room facilities.
             features = [];
-            const facilities = roomRow.find('.hprt-facilities-facility');
+            const facilities = roomRow.find(".hprt-facilities-facility");
             if (facilities.length > 0) {
                 for (let fi = 0; fi < facilities.length; fi++) {
                     const f = facilities.eq(fi);
-                    const fText = f.text().replace('•', '').trim();
-                    if (fText.indexOf('ft²') > -1) {
-                        const num = parseInt(fText.split(' ')[0], 10);
+                    const fText = f.text().replace("•", "").trim();
+                    if (fText.indexOf("ft²") > -1) {
+                        const num = parseInt(fText.split(" ")[0], 10);
                         const nText = `${parseInt(num * 0.092903, 10)} m²`;
                         features.push(nText);
                     } else {
@@ -294,9 +360,11 @@ const extractDetailedRoomsInfo = () => {
                 }
             }
 
-            let roomAmount = row.find('.hprt-table-room-select');
-            availableRooms = roomAmount.eq(0).find('select option:last-child').val();
-
+            let roomAmount = row.find(".hprt-table-room-select");
+            availableRooms = roomAmount
+                .eq(0)
+                .find("select option:last-child")
+                .val();
         }
 
         // Extract data for each room.
@@ -307,20 +375,36 @@ const extractDetailedRoomsInfo = () => {
             occupancy = null;
         }
         const persons = occupancy ? occupancy.match(/\d+/) : null;
-        const priceE = row.find('.bui-price-display__value .prco-valign-middle-helper').eq(0);
-        const priceT = priceE.length > 0 ? priceE.text().replaceAll(',', '.').replace(/[^\d.]+/g, '') : null;
-        const priceC = priceE.length > 0 ? priceE.text().replace(/[\d.\n\t, ]+/g, '') : null;
-        const cond = row.find('.hprt-conditions li');
-        const taxAndFeeText = row.find('.prd-taxes-and-fees-under-price').eq(0).text().trim();
+        const priceE = row
+            .find(".bui-price-display__value .prco-valign-middle-helper")
+            .eq(0);
+        const priceT =
+            priceE.length > 0
+                ? priceE
+                      .text()
+                      .replaceAll(",", ".")
+                      .replace(/[^\d.]+/g, "")
+                : null;
+        const priceC =
+            priceE.length > 0
+                ? priceE.text().replace(/[\d.\n\t, ]+/g, "")
+                : null;
+        const cond = row.find(".hprt-conditions li");
+        const taxAndFeeText = row
+            .find(".prd-taxes-and-fees-under-price")
+            .eq(0)
+            .text()
+            .trim();
         const taxAndFee = taxAndFeeText.match(/\d+/);
 
         const room = { available: true };
+        room.roomId = roomId;
         room.availableRooms = availableRooms;
         if (roomType) {
             room.roomType = roomType.text().trim();
         }
         if (bedText) {
-            room.bedType = bedText.replace(/\n+/g, ' ').trim();
+            room.bedType = bedText.replace(/\n+/g, " ").trim();
         }
         if (persons) {
             room.persons = parseInt(persons[0], 10);
@@ -340,7 +424,7 @@ const extractDetailedRoomsInfo = () => {
             room.conditions = [];
             for (let ci = 0; ci < cond.length; ci++) {
                 const cText = cond.eq(ci).text().trim();
-                room.conditions.push(cText.replace(/(\n|\s)+/g, ' '));
+                room.conditions.push(cText.replace(/(\n|\s)+/g, " "));
             }
         }
         rooms.push(room);
@@ -354,24 +438,33 @@ const extractDetailedRoomsInfo = () => {
  */
 const extractSimpleRoomsInfo = () => {
     const $ = window.jQuery;
-    const { location: { href } } = window;
+    const {
+        location: { href },
+    } = window;
 
-    const roomInfoElements = $('.room-info');
+    const roomInfoElements = $(".room-info");
     const rooms = $.map(roomInfoElements, (el) => {
-        const roomType = $(el).find('[data-room-name-en]').text().trim();
+        const roomType = $(el).find("[data-room-name-en]").text().trim();
         // eslint-disable-next-line newline-per-chained-call
-        const bedType = $(el).find('.rt-bed-type').text().trim().replace(/[\n]+/g, ' ');
+        const bedType = $(el)
+            .find(".rt-bed-type")
+            .text()
+            .trim()
+            .replace(/[\n]+/g, " ");
 
-        const id = ($(el).attr('id') || '').replace(/^RD/g, '');
+        const id = ($(el).attr("id") || "").replace(/^RD/g, "");
         const url = `${href}#room_${id}`;
 
         return { url, roomType, bedType };
     });
 
-    const occupancyElements = $('.roomstable tbody td.occ_no_dates');
+    const occupancyElements = $(".roomstable tbody td.occ_no_dates");
     const persons = $.map(occupancyElements, (el) => {
-        const roomPersons = $(el).find('.occupancy_adults > .bicon').length;
-        const multiplier = $(el).find('.occupancy_multiplier_number').text().trim();
+        const roomPersons = $(el).find(".occupancy_adults > .bicon").length;
+        const multiplier = $(el)
+            .find(".occupancy_multiplier_number")
+            .text()
+            .trim();
         const multiplierValue = parseInt(multiplier, 10);
 
         return multiplierValue ? multiplierValue * roomPersons : roomPersons;
