@@ -342,12 +342,12 @@ const extractDetailedRoomsInfo = () => {
         const roomRow = row.find(".hprt-table-cell-roomtype");
         let roomId = null;
         let availableRooms = 0;
+        const dataBlockId = row.attr("data-block-id") ?? "";
+        roomId = dataBlockId.split("_")?.[0] ?? null;
         if (roomRow.length > 0) {
             roomType = row.find(".hprt-roomtype-icon-link");
             const bedType = row.find(".hprt-roomtype-bed");
             bedText = bedType.length > 0 ? bedType.text() : null;
-            const dataBlockId = row.attr("data-block-id") ?? "";
-            roomId = dataBlockId.split("_")?.[0] ?? null;
 
             // Iterate and parse all room facilities.
             features = [];
