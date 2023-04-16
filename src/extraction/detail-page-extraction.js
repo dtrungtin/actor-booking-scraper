@@ -346,7 +346,8 @@ const extractDetailedRoomsInfo = () => {
             roomType = row.find(".hprt-roomtype-icon-link");
             const bedType = row.find(".hprt-roomtype-bed");
             bedText = bedType.length > 0 ? bedType.text() : null;
-            roomId = row.attr("data-block-id");
+            const dataBlockId = row.attr("data-block-id") ?? "";
+            roomId = dataBlockId.split("_")?.[0] ?? null;
 
             // Iterate and parse all room facilities.
             features = [];
