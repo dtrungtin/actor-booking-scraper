@@ -77,7 +77,7 @@ const extractHotelId = async (page) => {
         ? await getAttribute(btnHeart, "data-hotel-id")
         : null;
 
-    return hotelId;
+    return "abc";
 };
 
 const extractDescription = async (page) => {
