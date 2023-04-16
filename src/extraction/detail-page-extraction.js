@@ -340,11 +340,15 @@ const extractDetailedRoomsInfo = () => {
     for (let i = 0; i < rows.length; i++) {
         const row = rows.eq(i);
         const roomRow = row.find(".hprt-table-cell-roomtype");
+        let roomId = null;
         let availableRooms = 0;
         if (roomRow.length > 0) {
             roomType = row.find(".hprt-roomtype-icon-link");
             const bedType = row.find(".hprt-roomtype-bed");
             bedText = bedType.length > 0 ? bedType.text() : null;
+            roomId = row.$eval(".hprt-roomtype-link", (ele) =>
+                e.getAttribute("data-room-id")
+            );
 
             // Iterate and parse all room facilities.
             features = [];
@@ -401,6 +405,7 @@ const extractDetailedRoomsInfo = () => {
         const taxAndFee = taxAndFeeText.match(/\d+/);
 
         const room = { available: true };
+        room.roomId = roomId;
         room.availableRooms = availableRooms;
         if (roomType) {
             room.roomType = roomType.text().trim();
