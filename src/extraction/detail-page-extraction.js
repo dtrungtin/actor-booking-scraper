@@ -72,12 +72,14 @@ const extractName = async (page) => {
 };
 
 const extractHotelId = async (page) => {
-    const btnHeart = await page.$("#wl--wl_entrypoint_hp_head");
-    const hotelId = btnHeart
-        ? await (await btnHeart.getProperty("data-hotel-id")).jsonValue()
-        : null;
+    const btnHeart = await page.$eval("#wl--wl_entrypoint_hp_head", (ele) =>
+        ele.getAttribute("data-hotel-id")
+    );
+    // const hotelId = btnHeart
+    //     ? await (await btnHeart.getProperty("data-hotel-id")).jsonValue()
+    //     : null;
 
-    return hotelId;
+    return btnHeart;
 };
 
 const extractDescription = async (page) => {
