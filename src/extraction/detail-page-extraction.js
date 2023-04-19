@@ -3,6 +3,8 @@ const Puppeteer = require("puppeteer"); // eslint-disable-line
 const { getAttribute, addUrlParameters } = require("../util");
 const { EXPORTED_VARS_REGEX } = require("../consts");
 
+const { log } = Apify.utils;
+
 /**
  * Extracts information from the detail page.
  * @param {Puppeteer.Page} page - The Puppeteer page object.
