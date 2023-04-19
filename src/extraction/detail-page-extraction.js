@@ -219,9 +219,9 @@ const extractCategoryReviews = async (page) => {
 
 const extractUserReviews = async (page) => {
     const previewReviews = await page.$(
-        'div [data-testid="PropertyReviewsRegionBlock"] ul li5-'
+        'div [data-testid="PropertyReviewsRegionBlock"] ul li'
     );
-    log.info(previewReviews.toString());
+    log.info(previewReviews);
     const text = previewReviews ? "1" : "0";
     return text;
 };
