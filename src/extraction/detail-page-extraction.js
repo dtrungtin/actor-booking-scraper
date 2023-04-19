@@ -215,9 +215,7 @@ const extractCategoryReviews = async (page) => {
 };
 
 const extractUserReviews = async (page) => {
-    const guestReviews = await page.$(
-        'button [data-testid="fr-read-all-reviews"]'
-    );
+    const guestReviews = await page.$("div.reviews-snippet-sidebar");
     await page.click(guestReviews);
     await page.waitForSelector("div.sliding-panel-widget-content");
     const reviewTitle = await page.$(".reviewlist-header");
