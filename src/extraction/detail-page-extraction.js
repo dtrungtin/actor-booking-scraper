@@ -219,6 +219,7 @@ const extractUserReviews = async (page) => {
         "div.reviews-snippet-sidebar>div>div>div:last-child button"
     );
     await page.waitFor(3000);
+    log.info("wait for 3000s");
     const reviewTitle = await page.$("#review_list_page_container ul");
     const text = reviewTitle ? "1" : "0";
     return text;
