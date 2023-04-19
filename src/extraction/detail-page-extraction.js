@@ -218,13 +218,9 @@ const extractCategoryReviews = async (page) => {
 };
 
 const extractUserReviews = async (page) => {
-    await page.click(
-        "div.reviews-snippet-sidebar>div>div>div:last-child button"
-    );
-    await page.waitFor(3000);
-    log.info("wait for 3000s");
-    const reviewTitle = await page.$("#review_list_page_container ul");
-    const text = reviewTitle ? "1" : "0";
+    const previewReviews = await page.$("ul#:r14: li");
+    log.info(previewReviews);
+    const text = previewReviews ? "1" : "0";
     return text;
 };
 
