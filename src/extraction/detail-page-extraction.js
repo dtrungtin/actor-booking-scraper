@@ -220,9 +220,7 @@ const extractUserReviews = async (page) => {
     );
     await page.waitForSelector("div.sliding-panel-widget-content");
     const reviewTitle = await page.$(".reviewlist-header");
-    const text = reviewTitle
-        ? await getAttribute(reviewTitle, "textContent")
-        : "";
+    const text = reviewTitle ? "1" : "0";
     return text;
 };
 
