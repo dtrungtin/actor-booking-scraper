@@ -59,6 +59,7 @@ module.exports.extractDetail = async (page, ld, input, userData) => {
         rooms,
         images: await extractImages(page),
         categoryReviews: await extractCategoryReviews(page),
+        userReviews: await extractUserReviews(page),
     };
 };
 
@@ -211,6 +212,16 @@ const extractCategoryReviews = async (page) => {
     });
 
     return categoryReviews;
+};
+
+const extractUserReviews = async (page) => {
+    await page.click(`button [data-testid="fr-read-all-reviews"]`);
+    await page.waitForSelector("div.sliding-panel-widget-content");
+    const reviewTitle = await page.$(".reviewlist-header");
+    const text = reviewTitle
+        ? await getAttribute(reviewTitle, "textContent")
+        : "";
+    return text;
 };
 
 const extractRoomsInfo = async (page, { checkIn, checkOut }) => {
