@@ -218,7 +218,7 @@ const extractUserReviews = async (page) => {
     await page.click(
         "div.reviews-snippet-sidebar>div>div>div:last-child button"
     );
-    await page.waitForSelector("div.sliding-panel-widget-content");
+    await page.waitForSelector("ul.review_list");
     const reviewTitle = await page.$(".reviewlist-header");
     const text = reviewTitle ? "1" : "0";
     return text;
