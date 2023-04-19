@@ -218,9 +218,9 @@ const extractUserReviews = async (page) => {
     await page.click(
         "div.reviews-snippet-sidebar>div>div>div:last-child button"
     );
-    await page.waitForSelector("ul.review_list");
+    await page.waitForSelector("#review_list_page_container ul");
     await page.screenshot({ path: screenshot });
-    const reviewTitle = await page.$(".reviewlist-header");
+    const reviewTitle = await page.$("#review_list_page_container ul");
     const text = reviewTitle ? "1" : "0";
     return text;
 };
