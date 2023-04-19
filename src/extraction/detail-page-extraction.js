@@ -218,8 +218,7 @@ const extractUserReviews = async (page) => {
     await page.click(
         "div.reviews-snippet-sidebar>div>div>div:last-child button"
     );
-    await page.waitForSelector("#review_list_page_container ul");
-    await page.screenshot({ path: "abc.png" });
+    await page.waitFor(3000);
     const reviewTitle = await page.$("#review_list_page_container ul");
     const text = reviewTitle ? "1" : "0";
     return text;
