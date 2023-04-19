@@ -1,4 +1,5 @@
 const vm = require("vm");
+const Apify = require("apify");
 const Puppeteer = require("puppeteer"); // eslint-disable-line
 const { getAttribute, addUrlParameters } = require("../util");
 const { EXPORTED_VARS_REGEX } = require("../consts");
