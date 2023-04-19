@@ -89,7 +89,7 @@ module.exports.handleDetailPage = async (context, globalContext) => {
 
         const previewReviews = extractPreviewReviews(html, scrapeReviewerName);
         const userReviews = previewReviews.slice(0, store.state.maxReviews);
-
+        log.info("get user result");
         await Apify.pushData({ ...detail, ...userResult });
     }
 };
