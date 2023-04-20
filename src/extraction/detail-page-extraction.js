@@ -350,7 +350,7 @@ const extractDetailedRoomsInfo = () => {
         const row = rows.eq(i);
         const roomRow = row.find(".hprt-table-cell-roomtype");
         let availableRooms = 0;
-        const roomId = row.find("select").attr("data-room-id") ?? "";
+        const roomId = row.find("select").attr("data-block-id") ?? "";
         if (roomRow.length > 0) {
             roomType = row.find(".hprt-roomtype-icon-link");
             const bedType = row.find(".hprt-roomtype-bed");
