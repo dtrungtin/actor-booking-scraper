@@ -380,10 +380,9 @@ const extractDetailedRoomsInfo = () => {
             }
 
             let roomAmount = row.find(".hprt-table-room-select");
-            availableRooms = roomAmount
-                .eq(0)
-                .find("select option:last-child")
-                .val();
+            availableRooms = parseInt(
+                roomAmount.eq(0).find("select option:last-child").val()
+            );
         }
 
         // Extract data for each room.
