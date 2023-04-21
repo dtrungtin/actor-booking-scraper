@@ -1,8 +1,19 @@
-const Apify = require('apify');
-const { GlobalStore } = require('apify-global-store');
-const { REVIEWS_RESULTS_PER_REQUEST, LABELS, PLACE_COUNTRY_URL_CODE_REGEX } = require('../consts');
-const { extractDetail, extractPreviewReviews } = require('../extraction/detail-page-extraction');
-const { getMaxReviewsPages, addDetail, setReviewUrlsToProcess } = require('../global-store');
+const Apify = require("apify");
+const { GlobalStore } = require("apify-global-store");
+const {
+    REVIEWS_RESULTS_PER_REQUEST,
+    LABELS,
+    PLACE_COUNTRY_URL_CODE_REGEX,
+} = require("../consts");
+const {
+    extractDetail,
+    extractPreviewReviews,
+} = require("../extraction/detail-page-extraction");
+const {
+    getMaxReviewsPages,
+    addDetail,
+    setReviewUrlsToProcess,
+} = require("../global-store");
 
 const {
     validateProxy,
@@ -12,7 +23,7 @@ const {
     getAttribute,
     getPagename,
     getLocalizedUrl,
-} = require('../util');
+} = require("../util");
 
 const { log } = Apify.utils;
 
@@ -26,27 +37,36 @@ module.exports.handleDetailPage = async (context, globalContext) => {
 
     const { startUrls, minScore, language, scrapeReviewerName = false } = input;
 
-    await setHtmlDebugValue(page, 'DETAIL_PAGE');
+    await setHtmlDebugValue(page, "DETAIL_PAGE");
     await waitForPageToLoad(page);
 
     const ldElem = await page.$('script[type="application/ld+json"]');
-    const ld = JSON.parse(await getAttribute(ldElem, 'textContent'));
+    const ld = JSON.parse(await getAttribute(ldElem, "textContent"));
     await Apify.utils.puppeteer.injectJQuery(page);
 
     // Check if the page was opened through working proxy.
-    validateProxy(page, session, startUrls, 'label');
+    validateProxy(page, session, startUrls, "label");
 
     // Exit if core data is not present or the rating is too low.
-    if (!ld || (minScore && ld.aggregateRating && ld.aggregateRating.ratingValue < minScore)) {
+    if (
+        !ld ||
+        (minScore &&
+            ld.aggregateRating &&
+            ld.aggregateRating.ratingValue < minScore)
+    ) {
         return;
     }
 
     // Extract the data.
-    log.info('extracting detail...');
+    log.info("extracting detail...");
     const detail = await extractDetail(page, ld, input, userData);
-    log.info('detail extracted');
+    log.info("detail extracted");
 
-    const userResult = await getExtendedUserResult(page, extendOutputFunction, input.extendOutputFunction);
+    const userResult = await getExtendedUserResult(
+        page,
+        extendOutputFunction,
+        input.extendOutputFunction
+    );
 
     // If we're scraping reviews as well, we'll store the result into the dataset once it's merged with the reviews.
     if (getMaxReviewsPages() > 0) {
@@ -54,7 +74,12 @@ module.exports.handleDetailPage = async (context, globalContext) => {
         addDetail(detailPagename, detail);
 
         const { reviews: reviewsCount } = detail;
-        await enqueueAllReviewsPages(context, detailPagename, reviewsCount, language);
+        await enqueueAllReviewsPages(
+            context,
+            detailPagename,
+            reviewsCount,
+            language
+        );
 
         await saveDetailIfComplete(detailPagename);
     } else {
@@ -64,20 +89,24 @@ module.exports.handleDetailPage = async (context, globalContext) => {
 
         const previewReviews = extractPreviewReviews(html, scrapeReviewerName);
         const userReviews = previewReviews.slice(0, store.state.maxReviews);
-
-        await Apify.pushData({ ...detail, userReviews, ...userResult });
+        log.info("get user result");
+        await Apify.pushData({ ...detail, ...userResult });
     }
 };
 
 const waitForPageToLoad = async (page) => {
     try {
-        await page.waitForSelector('.bicon-occupancy');
+        await page.waitForSelector(".bicon-occupancy");
     } catch (e) {
-        log.info('occupancy info not found');
+        log.info("occupancy info not found");
     }
 };
 
-const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExtendOutputFunction) => {
+const getExtendedUserResult = async (
+    page,
+    extendOutputFunction,
+    stringifiedExtendOutputFunction
+) => {
     let userResult = {};
 
     if (extendOutputFunction) {
@@ -88,7 +117,7 @@ const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExte
         }, stringifiedExtendOutputFunction);
 
         if (!isObject(userResult)) {
-            log.error('extendOutputFunction has to return an object!!!');
+            log.error("extendOutputFunction has to return an object!!!");
             process.exit(1);
         }
     }
@@ -96,15 +125,26 @@ const getExtendedUserResult = async (page, extendOutputFunction, stringifiedExte
     return userResult;
 };
 
-const enqueueAllReviewsPages = async (context, detailPagename, reviewsCount, language) => {
-    const { page, crawler: { requestQueue } } = context;
+const enqueueAllReviewsPages = async (
+    context,
+    detailPagename,
+    reviewsCount,
+    language
+) => {
+    const {
+        page,
+        crawler: { requestQueue },
+    } = context;
 
     const detailPageUrl = await page.url();
     const reviewsUrl = buildReviewsStartUrl(detailPageUrl, language);
 
     const reviewPagesUrls = getReviewPagesUrls(reviewsUrl, reviewsCount);
-    log.info(`Found ${reviewsCount} reviews.
-    Enqueuing ${reviewPagesUrls.length} reviews pages (${REVIEWS_RESULTS_PER_REQUEST} reviews per page)...`, { detailPageUrl });
+    log.info(
+        `Found ${reviewsCount} reviews.
+    Enqueuing ${reviewPagesUrls.length} reviews pages (${REVIEWS_RESULTS_PER_REQUEST} reviews per page)...`,
+        { detailPageUrl }
+    );
 
     setReviewUrlsToProcess(detailPagename, reviewPagesUrls);
 
@@ -122,10 +162,10 @@ const enqueueAllReviewsPages = async (context, detailPagename, reviewsCount, lan
             request,
 
             /**
-            * Reviews have to be prioritized as we're waiting for all
-            * reviews to be processed before we push the detail into the dataset.
-            */
-            { forefront: true },
+             * Reviews have to be prioritized as we're waiting for all
+             * reviews to be processed before we push the detail into the dataset.
+             */
+            { forefront: true }
         );
     }
 };
@@ -134,18 +174,19 @@ const buildReviewsStartUrl = (detailPageUrl, language) => {
     const url = new URL(detailPageUrl);
     const { searchParams } = url;
 
-    const reviewsBaseUrl = 'https://www.booking.com/reviewlist.html';
+    const reviewsBaseUrl = "https://www.booking.com/reviewlist.html";
     const reviewsUrl = new URL(getLocalizedUrl(reviewsBaseUrl, language));
 
     // regex.exec(string) needs to be used instead of string.match(regex) to make capturing group work properly
-    const placeCountryMatches = PLACE_COUNTRY_URL_CODE_REGEX.exec(detailPageUrl);
-    const placeCountryMatch = placeCountryMatches ? placeCountryMatches[1] : '';
+    const placeCountryMatches =
+        PLACE_COUNTRY_URL_CODE_REGEX.exec(detailPageUrl);
+    const placeCountryMatch = placeCountryMatches ? placeCountryMatches[1] : "";
 
     const reviewUrlParams = {
-        aid: searchParams.get('aid'),
-        label: searchParams.get('label'),
-        sid: searchParams.get('sid'),
-        srpvid: searchParams.get('srpvid'),
+        aid: searchParams.get("aid"),
+        label: searchParams.get("label"),
+        sid: searchParams.get("sid"),
+        srpvid: searchParams.get("srpvid"),
         pagename: getPagename(detailPageUrl),
         cc1: placeCountryMatch,
         rows: REVIEWS_RESULTS_PER_REQUEST,
@@ -163,10 +204,17 @@ const getReviewPagesUrls = (reviewsUrl, reviewsCount) => {
     const urlsToEnqueue = [];
 
     const maxReviewsPages = getMaxReviewsPages();
-    const reviewsToEnqueue = Math.min(reviewsCount, maxReviewsPages * REVIEWS_RESULTS_PER_REQUEST);
+    const reviewsToEnqueue = Math.min(
+        reviewsCount,
+        maxReviewsPages * REVIEWS_RESULTS_PER_REQUEST
+    );
 
-    for (let enqueuedReviews = 0; enqueuedReviews < reviewsToEnqueue; enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST) {
-        reviewsUrl.searchParams.set('offset', enqueuedReviews);
+    for (
+        let enqueuedReviews = 0;
+        enqueuedReviews < reviewsToEnqueue;
+        enqueuedReviews += REVIEWS_RESULTS_PER_REQUEST
+    ) {
+        reviewsUrl.searchParams.set("offset", enqueuedReviews);
         urlsToEnqueue.push(reviewsUrl.toString());
     }
 
