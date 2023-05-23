@@ -3,7 +3,7 @@
     "name": "booking-scraper",
     "title": "Booking Scraper",
     "description": "Scrapes results from Booking.com",
-    "version": "0.0.1",
+    "version": "1.0",
     "storages": {
         "dataset": {
             "actorSpecification": 1,
@@ -22,36 +22,36 @@
                             "url",
                             "image"
                         ]
- 
+
                     },
                     "display": {
                         "component": "table",
                         "columns": [
-                            { 
+                            {
                                 "label": "",
                                 "format": "image",
                                 "field": "image"
-                            },                            { 
+                            },                            {
                                 "label": "Name",
                                 "format": "text",
                                 "field": "name"
                             },
-                            { 
+                            {
                                 "label": "Address",
                                 "format": "text",
                                 "field": "address"
                             },
-                            { 
+                            {
                                 "label": "Rating",
                                 "format": "text",
                                 "field": "rating"
                             },
-                            { 
+                            {
                                 "label": "Reviews",
                                 "format": "text",
                                 "field": "reviews"
                             },
-                            { 
+                            {
                                 "label": "URL",
                                 "format": "text",
                                 "field": "url"
